@@ -1,7 +1,8 @@
 defmodule SpiderMan.Component.Builder do
   @moduledoc false
+  require Logger
   alias Broadway.{Message, Acknowledger}
-  alias SpiderMan.Utils
+  alias SpiderMan.Pipeline
   @behaviour Acknowledger
 
   defmacro __using__(_opts \\ []) do
@@ -32,16 +33,16 @@ defmodule SpiderMan.Component.Builder do
 
   defp transform_broadway_options(component, options) do
     options = Map.new(options)
-    opts = Map.merge(%{next_tid: nil, middlewares: [], additional_specs: []}, options)
-    spider = opts.spider
+    spider = options.spider
+    opts = Map.merge(%{next_tid: nil, pipelines: [], additional_specs: []}, options)
+    {pipelines, opts} = Pipeline.prepare_for_start(opts.pipelines, opts)
+
+    Logger.info(
+      "!! spider: #{inspect(spider)}, component: #{inspect(component)} setup prepare_for_start_pipelines finish."
+    )
+
     ets_producer_options = opts |> Map.take([:tid, :additional_specs]) |> Map.to_list()
     processor = Map.get(opts, :processor, [])
-
-    middlewares =
-      Enum.map(
-        opts.middlewares,
-        &Utils.call_middleware_prepare_for_start(&1, options)
-      )
 
     producer = [
       module: {SpiderMan.Producer.ETS, ets_producer_options},
@@ -60,7 +61,7 @@ defmodule SpiderMan.Component.Builder do
     context =
       opts
       |> Map.get(:context, %{})
-      |> Map.merge(%{spider: spider, middlewares: middlewares})
+      |> Map.merge(%{spider: spider, pipelines: pipelines})
 
     [
       name: :"#{inspect(spider)}.#{Module.split(component) |> List.last()}",

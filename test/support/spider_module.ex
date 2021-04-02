@@ -8,41 +8,46 @@ defmodule Spider1 do
     end
   end
 
-  def test do
-    SpiderMan.start(__MODULE__)
-    Process.sleep(500)
-    r = SpiderMan.Utils.build_request("/")
-    SpiderMan.insert_requests(__MODULE__, [r])
-  end
-
   @impl true
   def settings do
     [
       downloader_options: [
+        context: %{debug: true},
+        pipelines: [SpiderMan.Pipeline.SetCookie],
         finch_options: [
-          base_url: "https://www.example.com",
-          requester: Requester
+          # base_url: "https://www.example.com",
+          base_url: "https://elixir-rss.feng19.com"
+          # middlewares: [Tesla.Middleware.Logger]
+          # requester: Requester
         ]
+      ],
+      spider_options: [
+        context: %{debug: true},
+        pipelines: [SpiderMan.Pipeline.SetCookie]
+      ],
+      item_processor_options: [
+        context: %{debug: true}
+        # batchers: []
       ]
-      # item_pipeline_options: [batchers: []]
     ]
   end
 
   @impl true
-  def handle_response(env, options) do
-    if parent = Keyword.get(options, :parent) do
+  def handle_response(%{key: key, env: env}, context) do
+    if parent = Map.get(context, :parent) do
       send(parent, {:handle_response, env})
     end
 
-    case env.url do
-      "/" ->
-        items = Enum.map(1..10, &build_item(&1, &1))
-        requests = Enum.map(1..10, &build_request("/not_found/#{&1}"))
-        %{items: items, requests: requests}
-
-      _ ->
-        %{items: [], requests: []}
-    end
+    %{}
+    #    case key do
+    #      "/" ->
+    #        items = Enum.map(1..10, &build_item(&1, &1))
+    #        requests = Enum.map(1..10, &build_request("/not_found/#{&1}"))
+    #        %{items: items, requests: requests}
+    #
+    #      _ ->
+    #        %{items: [], requests: []}
+    #    end
   end
 
   @impl true
@@ -50,6 +55,9 @@ defmodule Spider1 do
     if parent = Map.get(state, :parent) do
       send(parent, :started)
     end
+
+    r = SpiderMan.Utils.build_request("/")
+    SpiderMan.insert_requests(__MODULE__, [r])
 
     state
   end
@@ -72,4 +80,4 @@ defmodule Spider1 do
   end
 end
 
-Spider1.test()
+Spider1.start()

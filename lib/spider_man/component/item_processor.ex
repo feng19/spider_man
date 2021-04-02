@@ -1,15 +1,19 @@
-defmodule SpiderMan.ItemPipeline do
+defmodule SpiderMan.ItemProcessor do
   @moduledoc false
   use SpiderMan.Component.Builder
   require Logger
   alias Broadway.Message
-  alias SpiderMan.Utils
+  alias SpiderMan.Pipeline
 
   @impl true
   def handle_message(_processor, message, context) do
-    Logger.debug("ItemPipeline get message: #{inspect(message.data)}")
+    data = message.data
 
-    case Enum.reduce_while(context.middlewares, message.data, &Utils.pipe/2) do
+    if context[:debug] do
+      Logger.debug("ItemProcessor get message: #{inspect(data)}")
+    end
+
+    case Pipeline.pipe(context.pipelines, data) do
       :skiped -> Message.failed(message, :skiped)
       {:error, reason} -> Message.failed(message, reason)
       {batcher, item} -> %{message | data: item, batcher: batcher}

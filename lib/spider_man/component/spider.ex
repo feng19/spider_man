@@ -3,22 +3,21 @@ defmodule SpiderMan.Spider do
   use SpiderMan.Component.Builder
   require Logger
   alias Broadway.Message
-  alias SpiderMan.Utils
+  alias SpiderMan.Pipeline
 
   @impl true
   def handle_message(_processor, message, context) do
-    Logger.debug("Spider get message: #{inspect(message.data)}")
+    data = message.data
 
-    case Enum.reduce_while(context.middlewares, message.data, &Utils.pipe/2) do
-      %{env: env, options: options} ->
+    if context[:debug] do
+      Logger.debug("Spider get message: #{inspect(data)}")
+    end
+
+    case Pipeline.pipe(context.pipelines, data) do
+      response when is_struct(response) ->
         spider = context.spider
 
-        options =
-          context
-          |> Map.to_list()
-          |> Keyword.merge(options)
-
-        case spider.handle_response(env, options) do
+        case spider.handle_response(response, context) do
           return when is_map(return) ->
             case Map.get(return, :requests, []) do
               [] ->
@@ -26,10 +25,7 @@ defmodule SpiderMan.Spider do
 
               requests when is_list(requests) ->
                 objects = Enum.map(requests, &{&1.key, &1})
-
-                options
-                |> Keyword.fetch!(:prev_tid)
-                |> :ets.insert(objects)
+                :ets.insert(response.options[:prev_tid], objects)
             end
 
             items = Map.get(return, :items, [])

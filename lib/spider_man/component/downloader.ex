@@ -3,13 +3,17 @@ defmodule SpiderMan.Downloader do
   use SpiderMan.Component.Builder
   require Logger
   alias Broadway.Message
-  alias SpiderMan.{Response, Utils}
+  alias SpiderMan.{Response, Pipeline}
 
   @impl true
   def handle_message(_processor, message, context) do
-    Logger.debug("Downloader get message: #{inspect(message.data)}")
+    data = message.data
 
-    case Enum.reduce_while(context.middlewares, message.data, &Utils.pipe/2) do
+    if context[:debug] do
+      Logger.debug("Downloader get message: #{inspect(data)}")
+    end
+
+    case Pipeline.pipe(context.pipelines, data) do
       %{url: url, options: options} ->
         request_options = Keyword.merge(context.request_options, options)
         requester = context.requester

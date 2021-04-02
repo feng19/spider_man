@@ -3,7 +3,7 @@ defmodule SpiderMan do
   Documentation for `SpiderMan`.
   """
 
-  alias SpiderMan.{Engine, Storage}
+  alias SpiderMan.{Engine, Storage, Pipeline.DuplicateFilter}
 
   defmodule Request do
     @moduledoc false
@@ -26,10 +26,10 @@ defmodule SpiderMan do
     @type t :: %__MODULE__{key: term, value: term, options: keyword, retries: integer}
   end
 
-  @type component :: :downloader | :spider | :item_pipeline
+  @type component :: :downloader | :spider | :item_processor
   @type settings :: keyword
 
-  @callback handle_response(Tesla.Env.t(), options :: term) :: %{
+  @callback handle_response(Response.t(), context :: map) :: %{
               optional(:requests) => [Request.t()],
               optional(:items) => [Item.t()]
             }
@@ -46,18 +46,18 @@ defmodule SpiderMan do
 
   @default_settings [
     downloader_options: [
-      middlewares: [],
+      pipelines: [DuplicateFilter],
       processor: [max_demand: 1],
       rate_limiting: [allowed_messages: 10, interval: 1000],
       context: %{}
     ],
     spider_options: [
-      middlewares: [],
+      pipelines: [],
       processor: [max_demand: 1],
       context: %{}
     ],
-    item_pipeline_options: [
-      middlewares: [],
+    item_processor_options: [
+      pipelines: [DuplicateFilter],
       storage: Storage.Log,
       context: %{},
       batchers: [
@@ -87,6 +87,8 @@ defmodule SpiderMan do
 
       @behaviour unquote(__MODULE__)
 
+      def start(settings \\ []), do: SpiderMan.start(__MODULE__, settings)
+
       def start_link(options) do
         Supervisor.start_link(__MODULE__, options, name: __MODULE__)
       end
@@ -114,13 +116,20 @@ defmodule SpiderMan do
   end
 
   def stats(spider) do
-    components = Enum.map([:downloader, :spider, :item_pipeline], &{&1, stats(spider, &1)})
+    components = Enum.map([:downloader, :spider, :item_processor], &{&1, stats(spider, &1)})
     [{:status, Engine.status(spider)} | components]
   end
 
   def stats(spider, component) do
     if tid = :persistent_term.get({spider, :"#{component}_tid"}, nil) do
       tid |> :ets.info() |> Keyword.take([:size, :memory])
+    end
+  end
+
+  def wait_until(spider, status \\ :running) do
+    if Engine.status(spider) != status do
+      Process.sleep(100)
+      wait_until(spider, status)
     end
   end
 end

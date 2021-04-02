@@ -1,7 +1,18 @@
 defmodule SpiderMan.Engine do
   @moduledoc false
   use GenServer, shutdown: 60_000
-  alias SpiderMan.{Downloader, Spider, ItemPipeline, Requester, Utils}
+  alias Tesla.Middleware.{BaseUrl, Retry}
+
+  alias SpiderMan.{
+    Downloader,
+    Spider,
+    ItemProcessor,
+    Requester,
+    Pipeline,
+    Utils,
+    Middleware.UserAgent
+  }
+
   require Logger
 
   @type state :: map
@@ -21,9 +32,9 @@ defmodule SpiderMan.Engine do
   end
 
   # todo
-  def suspend_and_dump_stat(spider, timeout \\ :infinity) do
+  def suspend_and_dump(spider, timeout \\ :infinity) do
     process_name(spider)
-    |> GenServer.call(:suspend_and_dump_stat, timeout)
+    |> GenServer.call(:suspend_and_dump, timeout)
   end
 
   def continue(spider, timeout \\ :infinity) do
@@ -32,9 +43,9 @@ defmodule SpiderMan.Engine do
   end
 
   # todo
-  def load_stat_and_continue(spider, timeout \\ :infinity) do
+  def load_and_continue(spider, timeout \\ :infinity) do
     process_name(spider)
-    |> GenServer.call(:load_stat_and_continue, timeout)
+    |> GenServer.call(:load_and_continue, timeout)
   end
 
   @impl true
@@ -51,32 +62,55 @@ defmodule SpiderMan.Engine do
     spider = state.spider
 
     # new ets tables
-    downloader_tid = :ets.new(:downloader, [:set, :public, write_concurrency: true])
-    spider_tid = :ets.new(:spider, [:set, :public, write_concurrency: true])
-    item_pipeline_tid = :ets.new(:item_pipeline, [:set, :public, write_concurrency: true])
+    ets_options = [:set, :public, write_concurrency: true]
+    pipeline_ets_options = [:set, :public, write_concurrency: true, read_concurrency: true]
+    downloader_tid = :ets.new(:downloader, ets_options)
+    spider_tid = :ets.new(:spider, ets_options)
+    item_processor_tid = :ets.new(:item_processor, ets_options)
     :persistent_term.put({spider, :downloader_tid}, downloader_tid)
     :persistent_term.put({spider, :spider_tid}, spider_tid)
-    :persistent_term.put({spider, :item_pipeline_tid}, item_pipeline_tid)
+    :persistent_term.put({spider, :item_processor_tid}, item_processor_tid)
+    common_pipeline_tid = :ets.new(:common_pipeline, pipeline_ets_options)
+    downloader_pipeline_tid = :ets.new(:downloader_pipeline, pipeline_ets_options)
+    spider_pipeline_tid = :ets.new(:spider_pipeline, pipeline_ets_options)
+    item_processor_pipeline_tid = :ets.new(:item_processor_pipeline, pipeline_ets_options)
 
     Logger.info("!! spider: #{inspect(spider)} setup ets tables finish.")
 
     # setup component's options
     downloader_options =
-      [spider: spider, tid: downloader_tid, next_tid: spider_tid]
+      [
+        spider: spider,
+        tid: downloader_tid,
+        next_tid: spider_tid,
+        common_pipeline_tid: common_pipeline_tid,
+        pipeline_tid: downloader_pipeline_tid
+      ]
       |> Kernel.++(state.downloader_options)
       |> setup_finch(spider)
       |> prepare_for_start_component(:downloader, spider)
 
     spider_options =
-      [spider: spider, tid: spider_tid, next_tid: item_pipeline_tid]
+      [
+        spider: spider,
+        tid: spider_tid,
+        next_tid: item_processor_tid,
+        common_pipeline_tid: common_pipeline_tid,
+        pipeline_tid: spider_pipeline_tid
+      ]
       |> Kernel.++(state.spider_options)
       |> prepare_for_start_component(:spider, spider)
 
-    item_pipeline_options =
-      [spider: spider, tid: item_pipeline_tid]
-      |> Kernel.++(state.item_pipeline_options)
-      |> setup_item_pipeline_context()
-      |> prepare_for_start_component(:item_pipeline, spider)
+    item_processor_options =
+      [
+        spider: spider,
+        tid: item_processor_tid,
+        common_pipeline_tid: common_pipeline_tid,
+        pipeline_tid: item_processor_pipeline_tid
+      ]
+      |> Kernel.++(state.item_processor_options)
+      |> setup_item_processor_context()
+      |> prepare_for_start_component(:item_processor, spider)
 
     Logger.info("!! spider: #{inspect(spider)} setup prepare_for_start_component finish.")
 
@@ -84,8 +118,8 @@ defmodule SpiderMan.Engine do
     {:ok, downloader_pid} = Supervisor.start_child(spider, {Downloader, downloader_options})
     {:ok, spider_pid} = Supervisor.start_child(spider, {Spider, spider_options})
 
-    {:ok, item_pipeline_pid} =
-      Supervisor.start_child(spider, {ItemPipeline, item_pipeline_options})
+    {:ok, item_processor_pid} =
+      Supervisor.start_child(spider, {ItemProcessor, item_processor_options})
 
     Logger.info("!! spider: #{inspect(spider)} setup components finish.")
 
@@ -94,13 +128,13 @@ defmodule SpiderMan.Engine do
         status: :running,
         downloader_tid: downloader_tid,
         spider_tid: spider_tid,
-        item_pipeline_tid: item_pipeline_tid,
+        item_processor_tid: item_processor_tid,
         downloader_options: downloader_options,
         spider_options: spider_options,
-        item_pipeline_options: item_pipeline_options,
+        item_processor_options: item_processor_options,
         downloader_pid: downloader_pid,
         spider_pid: spider_pid,
-        item_pipeline_pid: item_pipeline_pid
+        item_processor_pid: item_processor_pid
       })
 
     state =
@@ -120,18 +154,14 @@ defmodule SpiderMan.Engine do
   def handle_call(:status, _from, state), do: {:reply, state.status, state}
 
   def handle_call(:suspend, _from, %{status: :running} = state) do
-    :ok = Utils.call_producer(state.downloader_pid, :suspend)
-    :ok = Utils.call_producer(state.spider_pid, :suspend)
-    :ok = Utils.call_producer(state.item_pipeline_pid, :suspend)
+    [:ok, :ok, :ok] = call_producers(state, :suspend)
     {:reply, :ok, %{state | status: :suspend}}
   end
 
   def handle_call(:suspend, _from, state), do: {:reply, :ok, state}
 
   def handle_call(:continue, _from, %{status: :suspend} = state) do
-    :ok = Utils.call_producer(state.downloader_pid, :continue)
-    :ok = Utils.call_producer(state.spider_pid, :continue)
-    :ok = Utils.call_producer(state.item_pipeline_pid, :continue)
+    [:ok, :ok, :ok] = call_producers(state, :continue)
     {:reply, :ok, %{state | status: :running}}
   end
 
@@ -151,7 +181,7 @@ defmodule SpiderMan.Engine do
     # prepare_for_stop
     prepare_for_stop_component(:downloader, state.downloader_options, spider)
     prepare_for_stop_component(:spider, state.spider_options, spider)
-    prepare_for_stop_component(:item_pipeline, state.item_pipeline_options, spider)
+    prepare_for_stop_component(:item_processor, state.item_processor_options, spider)
 
     if function_exported?(spider, :prepare_for_stop, 1) do
       spider.prepare_for_stop(state)
@@ -180,51 +210,37 @@ defmodule SpiderMan.Engine do
       spider.prepare_for_stop_component(component, options)
     end
 
-    Enum.each(
-      Keyword.fetch!(options, :middlewares),
-      &Utils.call_middleware_prepare_for_stop(&1)
+    options
+    |> Keyword.fetch!(:pipelines)
+    |> Pipeline.prepare_for_stop()
+
+    Logger.info(
+      "!! spider: #{inspect(spider)}, component: #{inspect(component)} setup prepare_for_stop_pipelines finish."
     )
   end
 
   defp setup_finch(downloader_options, spider) do
     finch_name = :"#{spider}.Finch"
 
-    retry_middleware = {
-      Tesla.Middleware.Retry,
-      delay: 500,
-      max_retries: 3,
-      max_delay: 4_000,
-      should_retry: fn
-        {:ok, %{status: status}} when status in [400, 500] -> true
-        {:ok, _} -> false
-        {:error, _} -> true
-      end
-    }
-
     finch_options =
       [
         spec_options: [pools: %{:default => [size: 32, count: 8]}],
         adapter_options: [pool_timeout: 5_000, receive_timeout: 5_000],
-        middlewares: [retry_middleware],
+        append_default_middlewares?: true,
+        middlewares: [],
         requester: Requester.Finch,
         request_options: []
       ]
       |> Keyword.merge(Keyword.get(downloader_options, :finch_options, []))
 
     finch_spec = {Finch, [{:name, finch_name} | finch_options[:spec_options]]}
-    adapter_options = [{:name, finch_name} | finch_options[:adapter_options]]
     requester = finch_options[:requester]
-
-    middlewares =
-      case Keyword.get(finch_options, :base_url) do
-        nil -> finch_options[:middlewares]
-        base_url -> [{Tesla.Middleware.BaseUrl, base_url} | finch_options[:middlewares]]
-      end
 
     request_options =
       [
-        adapter_options: adapter_options,
-        middlewares: middlewares
+        adapter_options: [{:name, finch_name} | finch_options[:adapter_options]],
+        middlewares:
+          append_default_middlewares(finch_options[:append_default_middlewares?], finch_options)
       ] ++ finch_options[:request_options]
 
     downloader_options
@@ -240,15 +256,64 @@ defmodule SpiderMan.Engine do
     )
   end
 
-  defp setup_item_pipeline_context(item_pipeline_options) do
-    storage = Keyword.get(item_pipeline_options, :storage, SpiderMan.Storage.Log)
-    storage_options = Keyword.get(item_pipeline_options, :storage_options, [])
+  defp append_default_middlewares(false, finch_options), do: finch_options[:middlewares]
+
+  defp append_default_middlewares(true, finch_options) do
+    middlewares =
+      case Keyword.get(finch_options, :base_url) do
+        nil -> finch_options[:middlewares]
+        base_url -> [{BaseUrl, base_url} | finch_options[:middlewares]]
+      end
+
+    middlewares =
+      unless find_tesla_middleware(middlewares, Retry) do
+        retry_options = [
+          delay: 500,
+          max_retries: 3,
+          max_delay: 4_000,
+          should_retry: fn
+            {:ok, %{status: status}} when status in [400, 500] -> true
+            {:ok, _} -> false
+            {:error, _} -> true
+          end
+        ]
+
+        [{Retry, retry_options} | middlewares]
+      else
+        middlewares
+      end
+
+    unless find_tesla_middleware(middlewares, UserAgent) do
+      [{UserAgent, ["SpiderMan Bot"]} | middlewares]
+    else
+      middlewares
+    end
+  end
+
+  defp setup_item_processor_context(item_processor_options) do
+    storage = Keyword.get(item_processor_options, :storage, SpiderMan.Storage.Log)
+    storage_options = Keyword.get(item_processor_options, :storage_options, [])
 
     context =
-      item_pipeline_options
+      item_processor_options
       |> Keyword.get(:context, %{})
       |> Map.merge(%{storage: storage, storage_options: storage_options})
 
-    Keyword.put(item_pipeline_options, :context, context)
+    Keyword.put(item_processor_options, :context, context)
+  end
+
+  defp find_tesla_middleware(middlewares, middleware) do
+    Enum.any?(middlewares, fn
+      {^middleware, _} -> true
+      ^middleware -> true
+      _ -> false
+    end)
+  end
+
+  defp call_producers(state, msg) do
+    Enum.map(
+      [state.downloader_pid, state.spider_pid, state.item_processor_pid],
+      &Utils.call_producer(&1, msg)
+    )
   end
 end

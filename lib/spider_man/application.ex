@@ -38,10 +38,12 @@ defmodule SpiderMan.Application do
     global_settings = Application.get_env(:spider_man, :global_settings, [])
     settings = Utils.merge_settings(default_settings, global_settings)
 
-    if function_exported?(spider, :settings, 0) do
+    with {:module, _} <- Code.ensure_loaded(spider),
+         function_exported?(spider, :settings, 0) do
       Utils.merge_settings(settings, spider.settings())
     else
-      settings
+      {:error, _} -> raise "Spider module: #{inspect(spider)} undefined!"
+      false -> settings
     end
     |> Utils.merge_settings(spider_settings)
   end
