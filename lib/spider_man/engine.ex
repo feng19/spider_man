@@ -31,21 +31,28 @@ defmodule SpiderMan.Engine do
     |> GenServer.call(:suspend, timeout)
   end
 
-  # todo
-  def suspend_and_dump(spider, timeout \\ :infinity) do
-    process_name(spider)
-    |> GenServer.call(:suspend_and_dump, timeout)
+  def dump2file(spider, file_name \\ nil, timeout \\ :infinity) do
+    IO.puts("Please ensure all producer's events is save done before dump2file: Y/N?")
+
+    case IO.read(1) do
+      "Y" ->
+        file_name = file_name || "./data/#{inspect(spider)}_#{System.system_time(:second)}"
+        IO.puts("starting dump2file: #{file_name}_*.ets ...")
+
+        result =
+          process_name(spider)
+          |> GenServer.call({:dump2file, file_name}, timeout)
+
+        IO.puts("dump2file: #{file_name}_*.ets finished, result: #{result}.")
+
+      _ ->
+        IO.puts("Canceled!!!")
+    end
   end
 
   def continue(spider, timeout \\ :infinity) do
     process_name(spider)
     |> GenServer.call(:continue, timeout)
-  end
-
-  # todo
-  def load_and_continue(spider, timeout \\ :infinity) do
-    process_name(spider)
-    |> GenServer.call(:load_and_continue, timeout)
   end
 
   @impl true
@@ -59,21 +66,22 @@ defmodule SpiderMan.Engine do
 
   @impl true
   def handle_continue(:start_components, state) do
-    spider = state.spider
+    state = setup_ets_tables(state)
 
-    # new ets tables
-    ets_options = [:set, :public, write_concurrency: true]
-    pipeline_ets_options = [:set, :public, write_concurrency: true, read_concurrency: true]
-    downloader_tid = :ets.new(:downloader, ets_options)
-    spider_tid = :ets.new(:spider, ets_options)
-    item_processor_tid = :ets.new(:item_processor, ets_options)
+    %{
+      spider: spider,
+      downloader_tid: downloader_tid,
+      spider_tid: spider_tid,
+      item_processor_tid: item_processor_tid,
+      common_pipeline_tid: common_pipeline_tid,
+      downloader_pipeline_tid: downloader_pipeline_tid,
+      spider_pipeline_tid: spider_pipeline_tid,
+      item_processor_pipeline_tid: item_processor_pipeline_tid
+    } = state
+
     :persistent_term.put({spider, :downloader_tid}, downloader_tid)
     :persistent_term.put({spider, :spider_tid}, spider_tid)
     :persistent_term.put({spider, :item_processor_tid}, item_processor_tid)
-    common_pipeline_tid = :ets.new(:common_pipeline, pipeline_ets_options)
-    downloader_pipeline_tid = :ets.new(:downloader_pipeline, pipeline_ets_options)
-    spider_pipeline_tid = :ets.new(:spider_pipeline, pipeline_ets_options)
-    item_processor_pipeline_tid = :ets.new(:item_processor_pipeline, pipeline_ets_options)
 
     Logger.info("!! spider: #{inspect(spider)} setup ets tables finish.")
 
@@ -126,12 +134,11 @@ defmodule SpiderMan.Engine do
     state =
       Map.merge(state, %{
         status: :running,
-        downloader_tid: downloader_tid,
-        spider_tid: spider_tid,
-        item_processor_tid: item_processor_tid,
+        # options
         downloader_options: downloader_options,
         spider_options: spider_options,
         item_processor_options: item_processor_options,
+        # broadways
         downloader_pid: downloader_pid,
         spider_pid: spider_pid,
         item_processor_pid: item_processor_pid
@@ -166,6 +173,25 @@ defmodule SpiderMan.Engine do
   end
 
   def handle_call(:continue, _from, state), do: {:reply, :ok, state}
+
+  def handle_call({:dump2file, file_name}, _from, %{status: :suspend} = state) do
+    Enum.each(
+      [
+        {"downloader", state.downloader_tid},
+        {"spider", state.spider_tid},
+        {"item_processor", state.item_processor_tid},
+        {"common_pipeline", state.common_pipeline_tid},
+        {"downloader_pipeline", state.downloader_pipeline_tid},
+        {"spider_pipeline", state.spider_pipeline_tid},
+        {"item_processor_pipeline", state.item_processor_pipeline_tid}
+      ],
+      fn {name, tid} -> do_dump2file("#{file_name}_#{name}.ets", tid) end
+    )
+
+    {:reply, :ok, state}
+  end
+
+  def handle_call({:dump2file, _}, _from, state), do: {:reply, :status_error, state}
 
   def handle_call(msg, _from, state) do
     Logger.warn("unsupported call msg: #{msg}.")
@@ -221,36 +247,40 @@ defmodule SpiderMan.Engine do
 
   defp setup_finch(downloader_options, spider) do
     finch_name = :"#{spider}.Finch"
+    finch_options = Keyword.get(downloader_options, :finch_options, [])
 
     finch_options =
-      [
-        spec_options: [pools: %{:default => [size: 32, count: 8]}],
-        adapter_options: [pool_timeout: 5_000, receive_timeout: 5_000],
-        append_default_middlewares?: true,
-        middlewares: [],
-        requester: Requester.Finch,
-        request_options: []
-      ]
-      |> Keyword.merge(Keyword.get(downloader_options, :finch_options, []))
+      Keyword.merge(
+        [
+          spec_options: [pools: %{:default => [size: 32, count: 8]}],
+          adapter_options: [pool_timeout: 5_000, receive_timeout: 5_000],
+          logging?: false,
+          append_default_middlewares?: true,
+          middlewares: [],
+          requester: Requester.Finch,
+          request_options: []
+        ],
+        finch_options
+      )
 
-    finch_spec = {Finch, [{:name, finch_name} | finch_options[:spec_options]]}
     requester = finch_options[:requester]
+    request_options = finch_options[:request_options]
+    finch_spec = {Finch, [{:name, finch_name} | finch_options[:spec_options]]}
+    adapter_options = [{:name, finch_name} | finch_options[:adapter_options]]
 
-    request_options =
-      [
-        adapter_options: [{:name, finch_name} | finch_options[:adapter_options]],
-        middlewares:
-          append_default_middlewares(finch_options[:append_default_middlewares?], finch_options)
-      ] ++ finch_options[:request_options]
+    middlewares =
+      append_default_middlewares(finch_options[:append_default_middlewares?], finch_options)
+
+    context = %{requester: requester, adapter_options: adapter_options, middlewares: middlewares}
 
     downloader_options
     |> Keyword.update(:additional_specs, [finch_spec], &[finch_spec | &1])
     |> Keyword.update(
       :context,
-      %{requester: requester, request_options: request_options},
-      fn context ->
-        context
-        |> Map.put(:requester, requester)
+      Map.put(context, :request_options, request_options),
+      fn old_context ->
+        old_context
+        |> Map.merge(context)
         |> Map.update(:request_options, request_options, &(request_options ++ &1))
       end
     )
@@ -260,13 +290,21 @@ defmodule SpiderMan.Engine do
 
   defp append_default_middlewares(true, finch_options) do
     middlewares =
-      case Keyword.get(finch_options, :base_url) do
-        nil -> finch_options[:middlewares]
-        base_url -> [{BaseUrl, base_url} | finch_options[:middlewares]]
+      if base_url = finch_options[:base_url] do
+        [{BaseUrl, base_url} | finch_options[:middlewares]]
+      else
+        finch_options[:middlewares]
       end
 
     middlewares =
-      unless find_tesla_middleware(middlewares, Retry) do
+      if finch_options[:logging?] do
+        [Tesla.Middleware.Logger | middlewares]
+      else
+        middlewares
+      end
+
+    middlewares =
+      if not_found_middleware?(middlewares, Retry) do
         retry_options = [
           delay: 500,
           max_retries: 3,
@@ -283,7 +321,7 @@ defmodule SpiderMan.Engine do
         middlewares
       end
 
-    unless find_tesla_middleware(middlewares, UserAgent) do
+    if not_found_middleware?(middlewares, UserAgent) do
       [{UserAgent, ["SpiderMan Bot"]} | middlewares]
     else
       middlewares
@@ -302,11 +340,11 @@ defmodule SpiderMan.Engine do
     Keyword.put(item_processor_options, :context, context)
   end
 
-  defp find_tesla_middleware(middlewares, middleware) do
-    Enum.any?(middlewares, fn
-      {^middleware, _} -> true
-      ^middleware -> true
-      _ -> false
+  defp not_found_middleware?(middlewares, middleware) do
+    Enum.all?(middlewares, fn
+      {^middleware, _} -> false
+      ^middleware -> false
+      _ -> true
     end)
   end
 
@@ -315,5 +353,83 @@ defmodule SpiderMan.Engine do
       [state.downloader_pid, state.spider_pid, state.item_processor_pid],
       &Utils.call_producer(&1, msg)
     )
+  end
+
+  defp setup_ets_tables(%{load_from_file: file_name, spider: spider} = state) do
+    Logger.info("!! spider: #{inspect(spider)} starting load_from_file: #{file_name}_*.ets ...")
+
+    [
+      downloader_tid,
+      spider_tid,
+      item_processor_tid,
+      common_pipeline_tid,
+      downloader_pipeline_tid,
+      spider_pipeline_tid,
+      item_processor_pipeline_tid
+    ] =
+      Enum.map(
+        [
+          "downloader",
+          "spider",
+          "item_processor",
+          "common_pipeline",
+          "downloader_pipeline",
+          "spider_pipeline",
+          "item_processor_pipeline"
+        ],
+        &do_load_from_file("#{file_name}_#{&1}.ets")
+      )
+
+    Logger.info("!! spider: #{inspect(spider)} load_from_file: #{file_name}_*.ets finished.")
+
+    Map.merge(state, %{
+      downloader_tid: downloader_tid,
+      spider_tid: spider_tid,
+      item_processor_tid: item_processor_tid,
+      common_pipeline_tid: common_pipeline_tid,
+      downloader_pipeline_tid: downloader_pipeline_tid,
+      spider_pipeline_tid: spider_pipeline_tid,
+      item_processor_pipeline_tid: item_processor_pipeline_tid
+    })
+  end
+
+  defp setup_ets_tables(state) do
+    # new ets tables
+    ets_options = [:set, :public, write_concurrency: true]
+    pipeline_ets_options = [:set, :public, write_concurrency: true, read_concurrency: true]
+    downloader_tid = :ets.new(:downloader, ets_options)
+    spider_tid = :ets.new(:spider, ets_options)
+    item_processor_tid = :ets.new(:item_processor, ets_options)
+    common_pipeline_tid = :ets.new(:common_pipeline, pipeline_ets_options)
+    downloader_pipeline_tid = :ets.new(:downloader_pipeline, pipeline_ets_options)
+    spider_pipeline_tid = :ets.new(:spider_pipeline, pipeline_ets_options)
+    item_processor_pipeline_tid = :ets.new(:item_processor_pipeline, pipeline_ets_options)
+
+    Map.merge(state, %{
+      downloader_tid: downloader_tid,
+      spider_tid: spider_tid,
+      item_processor_tid: item_processor_tid,
+      common_pipeline_tid: common_pipeline_tid,
+      downloader_pipeline_tid: downloader_pipeline_tid,
+      spider_pipeline_tid: spider_pipeline_tid,
+      item_processor_pipeline_tid: item_processor_pipeline_tid
+    })
+  end
+
+  defp do_dump2file(file_name, tid) do
+    IO.puts("starting dump2file: #{file_name} ...")
+    file_name = String.to_charlist(file_name)
+    result = :ets.tab2file(tid, file_name, extended_info: [:md5sum], sync: true)
+    IO.puts("dump2file: #{file_name} finished, result: #{inspect(result)}.")
+  end
+
+  defp do_load_from_file(file_name) do
+    file_name
+    |> String.to_charlist()
+    |> :ets.file2tab(verify: true)
+    |> case do
+      {:ok, tid} -> tid
+      {:error, error} -> raise "load_from_file: #{file_name} error: #{inspect(error)}"
+    end
   end
 end

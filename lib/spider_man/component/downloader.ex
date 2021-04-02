@@ -15,10 +15,9 @@ defmodule SpiderMan.Downloader do
 
     case Pipeline.pipe(context.pipelines, data) do
       %{url: url, options: options} ->
-        request_options = Keyword.merge(context.request_options, options)
         requester = context.requester
 
-        case requester.request(url, request_options) do
+        case requester.request(url, options, context) do
           {:ok, env} ->
             %{message | data: %Response{key: url, env: env}}
 

@@ -1,9 +1,12 @@
 defmodule Spider1 do
   use SpiderMan
+  alias SpiderMan.Response
+  alias SpiderMan.Pipeline.{SetCookie, DuplicateFilter}
 
   defmodule Requester do
     @behaviour SpiderMan.Requester
-    def request(url, _options) do
+    @impl true
+    def request(url, _options, _context) do
       {:ok, %Tesla.Env{url: url}}
     end
   end
@@ -11,10 +14,12 @@ defmodule Spider1 do
   @impl true
   def settings do
     [
+      # load_from_file: "./data/Spider1_1617359377",
       downloader_options: [
         context: %{debug: true},
-        pipelines: [SpiderMan.Pipeline.SetCookie],
+        pipelines: [DuplicateFilter, SetCookie],
         finch_options: [
+          logging?: true,
           # base_url: "https://www.example.com",
           base_url: "https://elixir-rss.feng19.com"
           # middlewares: [Tesla.Middleware.Logger]
@@ -22,8 +27,8 @@ defmodule Spider1 do
         ]
       ],
       spider_options: [
-        context: %{debug: true},
-        pipelines: [SpiderMan.Pipeline.SetCookie]
+        # context: %{debug: true},
+        pipelines: [DuplicateFilter, SetCookie]
       ],
       item_processor_options: [
         context: %{debug: true}
@@ -33,7 +38,7 @@ defmodule Spider1 do
   end
 
   @impl true
-  def handle_response(%{key: key, env: env}, context) do
+  def handle_response(%Response{env: env}, context) do
     if parent = Map.get(context, :parent) do
       send(parent, {:handle_response, env})
     end
@@ -56,8 +61,8 @@ defmodule Spider1 do
       send(parent, :started)
     end
 
-    r = SpiderMan.Utils.build_request("/")
-    SpiderMan.insert_requests(__MODULE__, [r])
+    # r = SpiderMan.Utils.build_request("/")
+    # SpiderMan.insert_requests(__MODULE__, [r])
 
     state
   end

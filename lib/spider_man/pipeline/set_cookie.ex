@@ -31,8 +31,19 @@ defmodule SpiderMan.Pipeline.SetCookie do
   @impl true
   def prepare_for_start(_arg, options) do
     tid = options[:common_pipeline_tid]
-    {:ok, agent} = Agent.start_link(fn -> [] end)
-    :ets.insert(tid, [{:cookies, []}, {:cookies_str, ""}])
+
+    agent =
+      case :ets.lookup(tid, :cookies) do
+        [] ->
+          {:ok, agent} = Agent.start_link(fn -> [] end)
+          :ets.insert(tid, [{:cookies, []}, {:cookies_str, ""}])
+          agent
+
+        [{_, cookies}] ->
+          {:ok, agent} = Agent.start_link(fn -> cookies end)
+          agent
+      end
+
     {%{tid: tid, agent: agent}, options}
   end
 

@@ -27,4 +27,5 @@ spider_man-*.tar
 /tmp
 
 *.iml
-/.idea
+/.idea/
+/data/
