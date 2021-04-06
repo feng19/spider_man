@@ -15,6 +15,7 @@ defmodule SpiderMan.Component.Builder do
 
       @impl true
       def handle_failed(messages, %{max_retries: 0}), do: messages
+      def handle_failed(messages, %{max_retries: :infinity}), do: messages
 
       def handle_failed(messages, _context) do
         Enum.map(messages, fn message ->

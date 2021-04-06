@@ -1,6 +1,7 @@
 defmodule SpiderMan.Engine do
   @moduledoc false
   use GenServer, shutdown: 60_000
+  require Logger
   alias Tesla.Middleware.{BaseUrl, Retry}
 
   alias SpiderMan.{
@@ -12,8 +13,6 @@ defmodule SpiderMan.Engine do
     Utils,
     Middleware.UserAgent
   }
-
-  require Logger
 
   @type state :: map
 

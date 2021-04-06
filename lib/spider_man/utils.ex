@@ -6,7 +6,7 @@ defmodule SpiderMan.Utils do
     %Request{key: url, url: url, options: options, retries: max_retries}
   end
 
-  def build_item(key, value, options \\ [], max_retries \\ 0) do
+  def build_item(key, value, options \\ [], max_retries \\ 1) do
     %Item{key: key, value: value, options: options, retries: max_retries}
   end
 
