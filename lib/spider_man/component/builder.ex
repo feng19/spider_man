@@ -81,6 +81,7 @@ defmodule SpiderMan.Component.Builder do
 
   @impl Acknowledger
   def ack(%{tid: tid, next_tid: next_tid}, successful, failed) when next_tid != nil do
+    # push successful events to next_tid
     successful
     |> Enum.flat_map(fn
       %{data: list} when is_list(list) ->

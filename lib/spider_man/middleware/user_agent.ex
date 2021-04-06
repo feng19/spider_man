@@ -2,7 +2,7 @@ defmodule SpiderMan.Middleware.UserAgent do
   @moduledoc false
   @behaviour Tesla.Middleware
 
-  @impl Tesla.Middleware
+  @impl true
   def call(env, next, user_agents) do
     user_agent = Enum.random(user_agents)
 

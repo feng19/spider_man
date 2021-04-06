@@ -377,7 +377,7 @@ defmodule SpiderMan.Engine do
           "spider_pipeline",
           "item_processor_pipeline"
         ],
-        &do_load_from_file("#{file_name}_#{&1}.ets")
+        &do_load_from_file!("#{file_name}_#{&1}.ets")
       )
 
     Logger.info("!! spider: #{inspect(spider)} load_from_file: #{file_name}_*.ets finished.")
@@ -423,7 +423,7 @@ defmodule SpiderMan.Engine do
     IO.puts("dump2file: #{file_name} finished, result: #{inspect(result)}.")
   end
 
-  defp do_load_from_file(file_name) do
+  defp do_load_from_file!(file_name) do
     file_name
     |> String.to_charlist()
     |> :ets.file2tab(verify: true)
