@@ -52,7 +52,7 @@ defmodule SpiderMan.Pipeline do
 
     {arg, options} =
       with {:module, _} <- Code.ensure_loaded(m),
-           function_exported?(m, :prepare_for_start, 2) do
+           true <- function_exported?(m, :prepare_for_start, 2) do
         m.prepare_for_start(arg, options)
       else
         {:error, _} -> raise "Pipeline module: #{inspect(m)} undefined!"
