@@ -297,7 +297,7 @@ defmodule SpiderMan.Engine do
 
     middlewares =
       if finch_options[:logging?] do
-        [Tesla.Middleware.Logger | middlewares]
+        middlewares ++ [Tesla.Middleware.Logger]
       else
         middlewares
       end
