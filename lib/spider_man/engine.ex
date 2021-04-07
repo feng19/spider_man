@@ -68,6 +68,7 @@ defmodule SpiderMan.Engine do
       item_processor_pipeline_tid: item_processor_pipeline_tid
     } = state
 
+    :persistent_term.put({spider, :common_pipeline_tid}, common_pipeline_tid)
     :persistent_term.put({spider, :downloader_tid}, downloader_tid)
     :persistent_term.put({spider, :spider_tid}, spider_tid)
     :persistent_term.put({spider, :item_processor_tid}, item_processor_tid)

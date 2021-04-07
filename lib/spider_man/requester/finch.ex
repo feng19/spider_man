@@ -24,10 +24,10 @@ defmodule SpiderMan.Requester.Finch do
         [
           spec_options: [pools: %{:default => [size: 32, count: 8]}],
           adapter_options: [pool_timeout: 5_000],
-          logging?: false,
+          request_options: [receive_timeout: 10_000],
           append_default_middlewares?: true,
           middlewares: [],
-          request_options: []
+          logging?: false
         ],
         finch_options
       )
@@ -54,9 +54,9 @@ defmodule SpiderMan.Requester.Finch do
     )
   end
 
-  defp append_default_middlewares(false, finch_options), do: finch_options[:middlewares]
+  def append_default_middlewares(false, finch_options), do: finch_options[:middlewares]
 
-  defp append_default_middlewares(true, finch_options) do
+  def append_default_middlewares(true, finch_options) do
     middlewares =
       if base_url = finch_options[:base_url] do
         [{BaseUrl, base_url} | finch_options[:middlewares]]

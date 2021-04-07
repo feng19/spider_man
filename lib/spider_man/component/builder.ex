@@ -8,6 +8,7 @@ defmodule SpiderMan.Component.Builder do
   defmacro __using__(_opts \\ []) do
     quote do
       use Broadway
+      require Logger
 
       def start_link(options) do
         unquote(__MODULE__).start_link(__MODULE__, options)
@@ -17,7 +18,11 @@ defmodule SpiderMan.Component.Builder do
       def handle_failed(messages, %{max_retries: 0}), do: messages
       def handle_failed(messages, %{max_retries: :infinity}), do: messages
 
-      def handle_failed(messages, _context) do
+      def handle_failed(messages, context) do
+        if context[:debug] do
+          Logger.debug("handle_failed messages: #{inspect(messages)}")
+        end
+
         Enum.map(messages, fn message ->
           Message.update_data(message, fn event ->
             Map.update!(event, :retries, &(&1 - 1))
