@@ -2,8 +2,18 @@ defmodule SpiderMan.Utils do
   @moduledoc false
   alias SpiderMan.{Request, Item}
 
+  def build_requests(urls, options \\ [method: :get], max_retries \\ 3) do
+    Enum.map(urls, &build_request(&1, options, max_retries))
+  end
+
   def build_request(url, options \\ [method: :get], max_retries \\ 3) do
     %Request{key: url, url: url, options: options, retries: max_retries}
+  end
+
+  def build_items(items, options \\ [], max_retries \\ 1) do
+    Enum.map(items, fn {key, value} ->
+      build_item(key, value, options, max_retries)
+    end)
   end
 
   def build_item(key, value, options \\ [], max_retries \\ 1) do
