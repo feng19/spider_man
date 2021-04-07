@@ -18,12 +18,12 @@ defmodule Spider1 do
       downloader_options: [
         context: %{debug: true},
         pipelines: [DuplicateFilter, SetCookie],
+        # requester: Requester,
         finch_options: [
           logging?: true,
           # base_url: "https://www.example.com",
           base_url: "https://elixir-rss.feng19.com"
           # middlewares: [Tesla.Middleware.Logger]
-          # requester: Requester
         ]
       ],
       spider_options: [
