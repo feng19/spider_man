@@ -1,7 +1,6 @@
 defmodule SpiderMan.Requester.Finch do
   @moduledoc false
   alias Tesla.Middleware.{BaseUrl, Retry}
-  alias SpiderMan.Middleware.UserAgent
   @behaviour SpiderMan.Requester
 
   @impl true
@@ -39,7 +38,7 @@ defmodule SpiderMan.Requester.Finch do
     middlewares =
       append_default_middlewares(finch_options[:append_default_middlewares?], finch_options)
 
-    context = %{requester: __MODULE__, adapter_options: adapter_options, middlewares: middlewares}
+    context = %{adapter_options: adapter_options, middlewares: middlewares}
 
     downloader_options
     |> Keyword.update(:additional_specs, [finch_spec], &[finch_spec | &1])
@@ -71,26 +70,19 @@ defmodule SpiderMan.Requester.Finch do
         middlewares
       end
 
-    middlewares =
-      if not_found_middleware?(middlewares, Retry) do
-        retry_options = [
-          delay: 500,
-          max_retries: 3,
-          max_delay: 4_000,
-          should_retry: fn
-            {:ok, %{status: status}} when status in [400, 500] -> true
-            {:ok, _} -> false
-            {:error, _} -> true
-          end
-        ]
+    if not_found_middleware?(middlewares, Retry) do
+      retry_options = [
+        delay: 500,
+        max_retries: 3,
+        max_delay: 4_000,
+        should_retry: fn
+          {:ok, %{status: status}} when status in [400, 500] -> true
+          {:ok, _} -> false
+          {:error, _} -> true
+        end
+      ]
 
-        [{Retry, retry_options} | middlewares]
-      else
-        middlewares
-      end
-
-    if not_found_middleware?(middlewares, UserAgent) do
-      [{UserAgent, ["SpiderMan Bot"]} | middlewares]
+      [{Retry, retry_options} | middlewares]
     else
       middlewares
     end

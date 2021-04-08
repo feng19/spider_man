@@ -20,7 +20,7 @@ defmodule SpiderMan.Requester.DynamicFinch do
       get_requester_spec(:B, spider, spec_options)
     ]
 
-    put_requester_setting(tid, spider, :A, adapter_options, request_options)
+    put_requester_settings(tid, spider, :A, adapter_options, request_options)
     opts = [strategy: :one_for_one, name: process_name(spider)]
     Supervisor.start_link(children, opts)
   end
@@ -30,7 +30,7 @@ defmodule SpiderMan.Requester.DynamicFinch do
 
   @impl true
   def request(url, options, %{spider: spider, tid: tid, middlewares: middlewares}) do
-    setting = get_requester_setting(tid, spider)
+    setting = get_requester_settings(tid, spider)
 
     options = Keyword.merge(setting.request_options, options)
 
@@ -79,12 +79,12 @@ defmodule SpiderMan.Requester.DynamicFinch do
     %{spec | id: id}
   end
 
-  defp get_requester_setting(tid, spider) do
+  defp get_requester_settings(tid, spider) do
     [{_, map}] = :ets.lookup(tid, {spider, __MODULE__})
     map
   end
 
-  defp put_requester_setting(tid, spider, id, adapter_options, request_options) do
+  defp put_requester_settings(tid, spider, id, adapter_options, request_options) do
     name = process_name(spider, id)
 
     map = %{
@@ -104,14 +104,14 @@ defmodule SpiderMan.Requester.DynamicFinch do
 
   def switch_finch(tid, spider, spec_options, adapter_options, request_options) do
     sup = process_name(spider)
-    %{id: now_id} = get_requester_setting(tid, spider)
+    %{id: now_id} = get_requester_settings(tid, spider)
     id = List.delete([:A, :B], now_id) |> hd()
     finch_spec = get_requester_spec(id, spider, spec_options)
 
     with :ok <- Supervisor.terminate_child(sup, id),
          :ok <- Supervisor.delete_child(sup, id),
          {:ok, _} = return <- Supervisor.start_child(sup, finch_spec) do
-      put_requester_setting(tid, spider, id, adapter_options, request_options)
+      put_requester_settings(tid, spider, id, adapter_options, request_options)
       return
     end
   end

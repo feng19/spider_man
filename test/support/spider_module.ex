@@ -1,6 +1,6 @@
 defmodule Spider1 do
   use SpiderMan
-  alias SpiderMan.Response
+  alias SpiderMan.{Response, Utils}
   alias SpiderMan.Pipeline.{SetCookie, DuplicateFilter}
 
   defmodule Requester do
@@ -16,14 +16,12 @@ defmodule Spider1 do
     [
       # load_from_file: "./data/Spider1_1617359377",
       downloader_options: [
-        context: %{debug: true},
+        # context: %{debug: true},
         pipelines: [DuplicateFilter, SetCookie],
-        # requester: Requester,
+        requester: Requester,
         finch_options: [
           logging?: true,
-          # base_url: "https://www.example.com",
-          base_url: "https://elixir-rss.feng19.com"
-          # middlewares: [Tesla.Middleware.Logger]
+          base_url: "https://www.example.com"
         ]
       ],
       spider_options: [
@@ -31,28 +29,27 @@ defmodule Spider1 do
         pipelines: [DuplicateFilter, SetCookie]
       ],
       item_processor_options: [
-        context: %{debug: true}
+        # context: %{debug: true}
         # batchers: []
       ]
     ]
   end
 
   @impl true
-  def handle_response(%Response{env: env}, context) do
+  def handle_response(%Response{key: key, env: env}, context) do
     if parent = Map.get(context, :parent) do
       send(parent, {:handle_response, env})
     end
 
-    %{}
-    #    case key do
-    #      "/" ->
-    #        items = Enum.map(1..10, &build_item(&1, &1))
-    #        requests = Enum.map(1..10, &build_request("/not_found/#{&1}"))
-    #        %{items: items, requests: requests}
-    #
-    #      _ ->
-    #        %{items: [], requests: []}
-    #    end
+    case key do
+      "/" ->
+        items = Enum.map(1..10, &Utils.build_item(&1, &1))
+        requests = Enum.map(1..10, &Utils.build_request("/#{&1}"))
+        %{items: items, requests: requests}
+
+      _ ->
+        %{items: [], requests: []}
+    end
   end
 
   @impl true
@@ -61,8 +58,8 @@ defmodule Spider1 do
       send(parent, :started)
     end
 
-    # r = SpiderMan.Utils.build_request("/")
-    # SpiderMan.insert_requests(__MODULE__, [r])
+    r = Utils.build_request("/")
+    SpiderMan.insert_requests(__MODULE__, [r])
 
     state
   end
@@ -84,5 +81,3 @@ defmodule Spider1 do
     end
   end
 end
-
-Spider1.start()

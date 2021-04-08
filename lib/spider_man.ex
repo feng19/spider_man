@@ -2,8 +2,9 @@ defmodule SpiderMan do
   @moduledoc """
   Documentation for `SpiderMan`.
   """
-
   alias SpiderMan.{Engine, Storage, Pipeline.DuplicateFilter}
+
+  @components [:downloader, :spider, :item_processor]
 
   defmodule Request do
     @moduledoc false
@@ -116,7 +117,7 @@ defmodule SpiderMan do
   end
 
   def stats(spider) do
-    components = Enum.map([:downloader, :spider, :item_processor], &{&1, stats(spider, &1)})
+    components = Enum.map(@components, &{&1, stats(spider, &1)})
     [{:status, Engine.status(spider)} | components]
   end
 
@@ -124,6 +125,27 @@ defmodule SpiderMan do
     if tid = :persistent_term.get({spider, :"#{component}_tid"}, nil) do
       tid |> :ets.info() |> Keyword.take([:size, :memory])
     end
+  end
+
+  def list_spiders do
+    SpiderMan.Supervisor
+    |> Supervisor.which_children()
+    |> Enum.map(&elem(&1, 0))
+  end
+
+  def periodic_measurements() do
+    Enum.each(list_spiders(), &telemetry_execute(&1))
+  catch
+    _, _ -> :ok
+  end
+
+  def telemetry_execute(spider) do
+    Enum.each(@components, fn component ->
+      measurements = stats(spider, component) |> Map.new()
+      :telemetry.execute([:spider_man, :ets], measurements, %{name: spider, component: component})
+    end)
+  catch
+    _, _ -> :ok
   end
 
   def wait_until(spider, status \\ :running) do

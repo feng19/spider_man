@@ -28,7 +28,9 @@ defmodule SpiderMan.MixProject do
     [
       {:broadway, "~> 0.6"},
       {:tesla, "~> 1.4"},
-      {:finch, "~> 0.6"}
+      {:finch, "~> 0.6"},
+      {:jason, "~> 1.2", optional: true},
+      {:telemetry_metrics, "~> 0.6.0", optional: true}
     ]
   end
 end

@@ -20,6 +20,8 @@ defmodule SpiderMan.Engine do
     |> GenServer.call(:suspend, timeout)
   end
 
+  def get_state(spider), do: spider |> process_name() |> :sys.get_state()
+
   def dump2file(spider, file_name \\ nil, timeout \\ :infinity) do
     IO.puts("Please ensure all producer's events is save done before dump2file: Y/N?")
 
@@ -241,6 +243,14 @@ defmodule SpiderMan.Engine do
         {requester, _arg} = r when is_atom(requester) -> r
         requester when is_atom(requester) -> {requester, []}
       end
+
+    options =
+      Keyword.update(
+        options,
+        :context,
+        %{requester: requester},
+        &Map.put(&1, :requester, requester)
+      )
 
     with {:module, _} <- Code.ensure_loaded(requester),
          true <- function_exported?(requester, :prepare_for_start, 2) do

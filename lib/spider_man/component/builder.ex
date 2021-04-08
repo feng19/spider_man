@@ -70,7 +70,7 @@ defmodule SpiderMan.Component.Builder do
       |> Map.merge(%{spider: spider, pipelines: pipelines})
 
     [
-      name: :"#{inspect(spider)}.#{Module.split(component) |> List.last()}",
+      name: :"#{spider}.#{Module.split(component) |> List.last()}",
       producer: producer,
       processors: [default: processor],
       batchers: Map.get(opts, :batchers, []),
