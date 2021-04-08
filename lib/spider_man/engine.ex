@@ -23,21 +23,21 @@ defmodule SpiderMan.Engine do
   def get_state(spider), do: spider |> process_name() |> :sys.get_state()
 
   def dump2file(spider, file_name \\ nil, timeout \\ :infinity) do
-    IO.puts("Please ensure all producer's events is save done before dump2file: Y/N?")
+    Logger.notice("Please ensure all producer's events is save done before dump2file: Y/N?")
 
     case IO.read(1) do
       "Y" ->
         file_name = file_name || "./data/#{inspect(spider)}_#{System.system_time(:second)}"
-        IO.puts("starting dump2file: #{file_name}_*.ets ...")
+        Logger.notice("starting dump2file: #{file_name}_*.ets ...")
 
         result =
           process_name(spider)
           |> GenServer.call({:dump2file, file_name}, timeout)
 
-        IO.puts("dump2file: #{file_name}_*.ets finished, result: #{result}.")
+        Logger.notice("dump2file: #{file_name}_*.ets finished, result: #{result}.")
 
       _ ->
-        IO.puts("Canceled!!!")
+        Logger.notice("Canceled!!!")
     end
   end
 
@@ -354,10 +354,10 @@ defmodule SpiderMan.Engine do
   end
 
   defp do_dump2file(file_name, tid) do
-    IO.puts("starting dump2file: #{file_name} ...")
+    Logger.notice("starting dump2file: #{file_name} ...")
     file_name = String.to_charlist(file_name)
     result = :ets.tab2file(tid, file_name, extended_info: [:md5sum], sync: true)
-    IO.puts("dump2file: #{file_name} finished, result: #{inspect(result)}.")
+    Logger.notice("dump2file: #{file_name} finished, result: #{inspect(result)}.")
   end
 
   defp do_load_from_file!(file_name) do
