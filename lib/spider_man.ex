@@ -108,6 +108,8 @@ defmodule SpiderMan do
 
   defdelegate start(spider, settings \\ []), to: SpiderMan.Application, as: :start_child
   defdelegate stop(spider), to: SpiderMan.Application, as: :stop_child
+  defdelegate suspend(spider, timeout \\ :infinity), to: SpiderMan.Engine
+  defdelegate continue(spider, timeout \\ :infinity), to: SpiderMan.Engine
 
   def insert_requests(spider, requests) do
     if tid = :persistent_term.get({spider, :downloader_tid}, nil) do
@@ -140,9 +142,10 @@ defmodule SpiderMan do
   end
 
   def telemetry_execute(spider) do
+    name = inspect(spider)
     Enum.each(@components, fn component ->
       measurements = stats(spider, component) |> Map.new()
-      :telemetry.execute([:spider_man, :ets], measurements, %{name: spider, component: component})
+      :telemetry.execute([:spider_man, :ets], measurements, %{name: name, component: component})
     end)
   catch
     _, _ -> :ok

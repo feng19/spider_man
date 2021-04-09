@@ -6,7 +6,7 @@ defmodule SpiderMan.Engine do
 
   @type state :: map
 
-  def process_name(spider), do: :"#{inspect(spider)}.Engine"
+  def process_name(spider), do: :"#{spider}.Engine"
 
   def start_link(options) do
     spider = Keyword.fetch!(options, :spider)
@@ -27,18 +27,16 @@ defmodule SpiderMan.Engine do
 
     case IO.read(1) do
       "Y" ->
-        file_name = file_name || "./data/#{inspect(spider)}_#{System.system_time(:second)}"
-        Logger.notice("starting dump2file: #{file_name}_*.ets ...")
-
-        result =
-          process_name(spider)
-          |> GenServer.call({:dump2file, file_name}, timeout)
-
-        Logger.notice("dump2file: #{file_name}_*.ets finished, result: #{result}.")
+        dump2file_force(spider, file_name, timeout)
 
       _ ->
         Logger.notice("Canceled!!!")
     end
+  end
+
+  def dump2file_force(spider, file_name \\ nil, timeout \\ :infinity) do
+    process_name(spider)
+    |> GenServer.call({:dump2file, file_name}, timeout)
   end
 
   def continue(spider, timeout \\ :infinity) do
@@ -152,21 +150,27 @@ defmodule SpiderMan.Engine do
   @impl true
   def handle_call(:status, _from, state), do: {:reply, state.status, state}
 
-  def handle_call(:suspend, _from, %{status: :running} = state) do
+  def handle_call(:suspend, _from, %{status: :running, spider: spider} = state) do
     [:ok, :ok, :ok] = call_producers(state, :suspend)
+    Logger.info("!! spider: #{inspect(spider)} status turn to suspend.")
     {:reply, :ok, %{state | status: :suspend}}
   end
 
   def handle_call(:suspend, _from, state), do: {:reply, :ok, state}
 
-  def handle_call(:continue, _from, %{status: :suspend} = state) do
+  def handle_call(:continue, _from, %{status: :suspend, spider: spider} = state) do
     [:ok, :ok, :ok] = call_producers(state, :continue)
+    Logger.info("!! spider: #{inspect(spider)} status turn to running.")
     {:reply, :ok, %{state | status: :running}}
   end
 
   def handle_call(:continue, _from, state), do: {:reply, :ok, state}
 
-  def handle_call({:dump2file, file_name}, _from, %{status: :suspend} = state) do
+  def handle_call({:dump2file, file_name}, _from, %{status: :suspend, spider: spider} = state) do
+    file_name = file_name || "./data/#{inspect(spider)}_#{System.system_time(:second)}"
+    Path.dirname(file_name) |> File.mkdir_p()
+    Logger.notice("!! spider: #{inspect(spider)} starting dump2file: #{file_name}_*.ets ...")
+
     Enum.each(
       [
         {"downloader", state.downloader_tid},
@@ -179,6 +183,8 @@ defmodule SpiderMan.Engine do
       ],
       fn {name, tid} -> do_dump2file("#{file_name}_#{name}.ets", tid) end
     )
+
+    Logger.notice("!! spider: #{inspect(spider)} dump2file: #{file_name}_*.ets finished.")
 
     {:reply, :ok, state}
   end

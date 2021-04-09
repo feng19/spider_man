@@ -30,7 +30,9 @@ defmodule SpiderMan.Application do
   end
 
   def stop_child(spider) do
-    Supervisor.terminate_child(@supervisor, spider)
+    with :ok <- Supervisor.terminate_child(@supervisor, spider) do
+      Supervisor.delete_child(@supervisor, spider)
+    end
   end
 
   defp merge_settings(spider, spider_settings) do
