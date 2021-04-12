@@ -45,17 +45,16 @@ defmodule SpiderMan.Requester.DynamicFinch do
     finch_options = Keyword.get(downloader_options, :finch_options, [])
 
     finch_options =
-      Keyword.merge(
-        [
-          spec_options: [pools: %{:default => [size: 32, count: 8]}],
-          adapter_options: [pool_timeout: 5_000],
-          request_options: [receive_timeout: 10_000],
-          append_default_middlewares?: true,
-          middlewares: [],
-          logging?: false
-        ],
-        finch_options
-      )
+      [
+        spec_options: [pools: %{:default => [size: 32, count: 8]}],
+        adapter_options: [pool_timeout: 5_000],
+        request_options: [receive_timeout: 10_000],
+        append_default_middlewares?: true,
+        middlewares: [],
+        logging?: false
+      ]
+      |> Keyword.merge(finch_options)
+      |> SpiderMan.Requester.Finch.handle_proxy_option()
 
     middlewares =
       SpiderMan.Requester.Finch.append_default_middlewares(

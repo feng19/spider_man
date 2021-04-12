@@ -19,17 +19,16 @@ defmodule SpiderMan.Requester.Finch do
     finch_options = Keyword.get(downloader_options, :finch_options, [])
 
     finch_options =
-      Keyword.merge(
-        [
-          spec_options: [pools: %{:default => [size: 32, count: 8]}],
-          adapter_options: [pool_timeout: 5_000],
-          request_options: [receive_timeout: 10_000],
-          append_default_middlewares?: true,
-          middlewares: [],
-          logging?: false
-        ],
-        finch_options
-      )
+      [
+        spec_options: [pools: %{:default => [size: 32, count: 8]}],
+        adapter_options: [pool_timeout: 5_000],
+        request_options: [receive_timeout: 10_000],
+        append_default_middlewares?: true,
+        middlewares: [],
+        logging?: false
+      ]
+      |> Keyword.merge(finch_options)
+      |> handle_proxy_option()
 
     request_options = finch_options[:request_options]
     finch_spec = {Finch, [{:name, finch_name} | finch_options[:spec_options]]}
@@ -51,6 +50,45 @@ defmodule SpiderMan.Requester.Finch do
         |> Map.update(:request_options, request_options, &(request_options ++ &1))
       end
     )
+  end
+
+  def handle_proxy_option(finch_options) do
+    case Keyword.get(finch_options, :proxy) do
+      nil ->
+        finch_options
+
+      %{schema: schema, address: address} = setting when schema in [:http, :https] ->
+        port =
+          case schema do
+            :http -> Map.get(setting, :port, 8080)
+            :https -> Map.get(setting, :port, 443)
+          end
+
+        proxy = {schema, address, port, []}
+        spec_options = Keyword.get(finch_options, :spec_options, [])
+        pools = Keyword.get(spec_options, :pools, %{})
+
+        proxy_headers =
+          case Map.get(setting, :username) do
+            nil ->
+              []
+
+            username ->
+              password = Map.get(setting, :password, "")
+              credentials = Base.encode64("#{username}:#{password}")
+              [{"proxy-authorization", "Basic #{credentials}"}]
+          end
+
+        conn_opts = [proxy: proxy, proxy_headers: proxy_headers]
+
+        pools =
+          Map.new(pools, fn {name, pool_settings} ->
+            {name, Keyword.update(pool_settings, :conn_opts, conn_opts, &Keyword.merge(&1, conn_opts))}
+          end)
+
+        spec_options = Keyword.put(spec_options, :pools, pools)
+        Keyword.put(finch_options, :spec_options, spec_options)
+    end
   end
 
   def append_default_middlewares(false, finch_options), do: finch_options[:middlewares]

@@ -22,6 +22,7 @@ defmodule Spider1 do
         finch_options: [
           logging?: true,
           base_url: "https://www.example.com"
+          # proxy: %{schema: :http, address: "127.0.0.1", port: 1087}
         ]
       ],
       spider_options: [
