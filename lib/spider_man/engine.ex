@@ -301,39 +301,26 @@ defmodule SpiderMan.Engine do
   defp setup_ets_tables(%{load_from_file: file_name, spider: spider} = state) do
     Logger.info("!! spider: #{inspect(spider)} starting load_from_file: #{file_name}_*.ets ...")
 
-    [
-      downloader_tid,
-      spider_tid,
-      item_processor_tid,
-      common_pipeline_tid,
-      downloader_pipeline_tid,
-      spider_pipeline_tid,
-      item_processor_pipeline_tid
-    ] =
-      Enum.map(
+    ets_tables =
+      Map.new(
         [
-          "downloader",
-          "spider",
-          "item_processor",
-          "common_pipeline",
-          "downloader_pipeline",
-          "spider_pipeline",
-          "item_processor_pipeline"
+          downloader_tid: "downloader",
+          spider_tid: "spider",
+          item_processor_tid: "item_processor",
+          common_pipeline_tid: "common_pipeline",
+          downloader_pipeline_tid: "downloader_pipeline",
+          spider_pipeline_tid: "spider_pipeline",
+          item_processor_pipeline_tid: "item_processor_pipeline"
         ],
-        &do_load_from_file!("#{file_name}_#{&1}.ets")
+        fn {key, file_suffix} ->
+          tid = do_load_from_file!("#{file_name}_#{file_suffix}.ets", spider)
+          {key, tid}
+        end
       )
 
     Logger.info("!! spider: #{inspect(spider)} load_from_file: #{file_name}_*.ets finished.")
 
-    Map.merge(state, %{
-      downloader_tid: downloader_tid,
-      spider_tid: spider_tid,
-      item_processor_tid: item_processor_tid,
-      common_pipeline_tid: common_pipeline_tid,
-      downloader_pipeline_tid: downloader_pipeline_tid,
-      spider_pipeline_tid: spider_pipeline_tid,
-      item_processor_pipeline_tid: item_processor_pipeline_tid
-    })
+    Map.merge(state, ets_tables)
   end
 
   defp setup_ets_tables(state) do
@@ -366,7 +353,9 @@ defmodule SpiderMan.Engine do
     Logger.notice("dump2file: #{file_name} finished, result: #{inspect(result)}.")
   end
 
-  defp do_load_from_file!(file_name) do
+  defp do_load_from_file!(file_name, spider) do
+    Logger.info("!! spider: #{inspect(spider)} loading from file: #{file_name} ...")
+
     file_name
     |> String.to_charlist()
     |> :ets.file2tab(verify: true)

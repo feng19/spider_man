@@ -18,12 +18,13 @@ defmodule Spider1 do
       downloader_options: [
         # context: %{debug: true},
         pipelines: [DuplicateFilter, SetCookie],
-        requester: Requester,
-        finch_options: [
-          logging?: true,
-          base_url: "https://www.example.com"
-          # proxy: %{schema: :http, address: "127.0.0.1", port: 1087}
-        ]
+        requester:
+          {Requester,
+           [
+             logging?: true,
+             base_url: "https://www.example.com"
+             # proxy: %{schema: :http, address: "127.0.0.1", port: 1087}
+           ]}
       ],
       spider_options: [
         # context: %{debug: true},

@@ -13,10 +13,9 @@ defmodule SpiderMan.Requester.Finch do
   end
 
   @impl true
-  def prepare_for_start(_arg, downloader_options) do
+  def prepare_for_start(finch_options, downloader_options) do
     spider = Keyword.fetch!(downloader_options, :spider)
     finch_name = :"#{spider}.Finch"
-    finch_options = Keyword.get(downloader_options, :finch_options, [])
 
     finch_options =
       [
@@ -83,7 +82,8 @@ defmodule SpiderMan.Requester.Finch do
 
         pools =
           Map.new(pools, fn {name, pool_settings} ->
-            {name, Keyword.update(pool_settings, :conn_opts, conn_opts, &Keyword.merge(&1, conn_opts))}
+            {name,
+             Keyword.update(pool_settings, :conn_opts, conn_opts, &Keyword.merge(&1, conn_opts))}
           end)
 
         spec_options = Keyword.put(spec_options, :pools, pools)
