@@ -29,18 +29,19 @@ defmodule SpiderMan do
 
   @type component :: :downloader | :spider | :item_processor
   @type settings :: keyword
+  @type prepare_for_start_stage :: :pre | :post
 
   @callback handle_response(Response.t(), context :: map) :: %{
               optional(:requests) => [Request.t()],
               optional(:items) => [Item.t()]
             }
   @callback settings() :: settings
-  @callback prepare_for_start(state) :: state when state: Engine.state()
+  @callback prepare_for_start(prepare_for_start_stage, state) :: state when state: Engine.state()
   @callback prepare_for_stop(Engine.state()) :: :ok
   @callback prepare_for_start_component(component, options) :: options when options: keyword
   @callback prepare_for_stop_component(component, options :: keyword) :: :ok
   @optional_callbacks settings: 0,
-                      prepare_for_start: 1,
+                      prepare_for_start: 2,
                       prepare_for_stop: 1,
                       prepare_for_start_component: 2,
                       prepare_for_stop_component: 2
@@ -86,21 +87,27 @@ defmodule SpiderMan do
           build_item: 4
         ]
 
-      @behaviour unquote(__MODULE__)
+      @behaviour SpiderMan
 
-      def start(settings \\ []), do: SpiderMan.start(__MODULE__, settings)
-
-      def start_link(options) do
-        Supervisor.start_link(__MODULE__, options, name: __MODULE__)
+      def start_link(options) when is_list(options) do
+        spider = Keyword.fetch!(options, :spider)
+        spider_module = Keyword.fetch!(options, :spider_module)
+        Supervisor.start_link(spider_module, options, name: spider)
       end
 
+      @impl Supervisor
       def init(options) do
+        spider = Keyword.fetch!(options, :spider)
+
         children = [
-          {SpiderMan.Engine, [{:spider, __MODULE__} | options]}
+          {SpiderMan.Component.Supervisor, spider},
+          {SpiderMan.Engine, options}
         ]
 
-        Supervisor.init(children, strategy: :one_for_one)
+        Supervisor.init(children, strategy: :one_for_all)
       end
+
+      defoverridable start_link: 1, init: 1
     end
   end
 
@@ -108,8 +115,17 @@ defmodule SpiderMan do
 
   defdelegate start(spider, settings \\ []), to: SpiderMan.Application, as: :start_child
   defdelegate stop(spider), to: SpiderMan.Application, as: :stop_child
+  defdelegate status(spider), to: SpiderMan.Engine
+  defdelegate get_state(spider), to: SpiderMan.Engine
   defdelegate suspend(spider, timeout \\ :infinity), to: SpiderMan.Engine
   defdelegate continue(spider, timeout \\ :infinity), to: SpiderMan.Engine
+
+  def ensure_started(spider, settings \\ []) do
+    with {:ok, _} = return <- start(spider, settings) do
+      wait_until(spider)
+      return
+    end
+  end
 
   def insert_requests(spider, requests) do
     if tid = :persistent_term.get({spider, :downloader_tid}, nil) do
@@ -143,6 +159,7 @@ defmodule SpiderMan do
 
   def telemetry_execute(spider) do
     name = inspect(spider)
+
     Enum.each(@components, fn component ->
       measurements = stats(spider, component) |> Map.new()
       :telemetry.execute([:spider_man, :ets], measurements, %{name: name, component: component})

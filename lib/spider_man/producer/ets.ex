@@ -11,7 +11,22 @@ defmodule SpiderMan.Producer.ETS do
     {gen_stage_opts, opts} = Keyword.split(opts, [:buffer_size, :buffer_keep])
     tid = Keyword.fetch!(opts, :tid)
     retry_interval = Keyword.get(opts, :retry_interval, 500) |> max(300)
-    state = %{tid: tid, retry_interval: retry_interval, retry_timer: nil, demand: 0}
+    status = Keyword.get(opts, :status, :running)
+
+    retry_timer =
+      case status do
+        :running -> nil
+        _ -> false
+      end
+
+    state = %{
+      status: status,
+      tid: tid,
+      retry_interval: retry_interval,
+      retry_timer: retry_timer,
+      demand: 0
+    }
+
     {:producer, state, gen_stage_opts}
   end
 
@@ -26,15 +41,21 @@ defmodule SpiderMan.Producer.ETS do
   end
 
   @impl true
-  def handle_call(:suspend, _from, %{retry_timer: retry_timer} = state) do
+  def handle_call(:status, _from, state), do: {:reply, state.status, [], state}
+
+  def handle_call(:suspend, _from, %{status: :running, retry_timer: retry_timer} = state) do
     retry_timer && Process.cancel_timer(retry_timer)
-    {:reply, :ok, [], %{state | retry_timer: false}}
+    {:reply, :ok, [], %{state | retry_timer: false, status: :suspended}}
   end
 
-  def handle_call(:continue, from, state) do
+  def handle_call(:suspend, _from, state), do: {:reply, :ok, [], state}
+
+  def handle_call(:continue, from, %{status: :suspended} = state) do
     GenStage.reply(from, :ok)
-    handle_get_messages(%{state | retry_timer: nil})
+    handle_get_messages(%{state | retry_timer: nil, status: :running})
   end
+
+  def handle_call(:continue, _from, state), do: {:reply, :ok, [], state}
 
   defp handle_get_messages(%{retry_timer: nil, demand: demand, tid: tid} = state)
        when demand > 0 do

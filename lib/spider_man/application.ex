@@ -9,15 +9,20 @@ defmodule SpiderMan.Application do
   def start(_type, _args) do
     children =
       Application.get_env(:spider_man, :spiders, [])
-      |> Enum.map(fn
-        {spider, spider_settings} when is_atom(spider) ->
-          settings = merge_settings(spider, spider_settings)
-          {spider, settings}
+      |> Enum.map(fn spider ->
+        {spider, settings} =
+          case spider do
+            {spider, settings} when is_atom(spider) and is_list(settings) ->
+              {spider, settings}
 
-        spider when is_atom(spider) ->
-          spider_settings = Application.get_env(:spider_man, spider, [])
-          settings = merge_settings(spider, spider_settings)
-          {spider, settings}
+            spider when is_atom(spider) ->
+              settings = Application.get_env(:spider_man, spider, [])
+              {spider, settings}
+          end
+
+        settings = merge_settings(spider, settings)
+        spider_module = Keyword.fetch!(settings, :spider_module)
+        spider_child_spec(spider, spider_module, settings)
       end)
 
     opts = [strategy: :one_for_one, name: @supervisor]
@@ -26,7 +31,9 @@ defmodule SpiderMan.Application do
 
   def start_child(spider, spider_settings \\ []) do
     settings = merge_settings(spider, spider_settings)
-    Supervisor.start_child(@supervisor, {spider, settings})
+    spider_module = Keyword.fetch!(settings, :spider_module)
+    child_spec = spider_child_spec(spider, spider_module, settings)
+    Supervisor.start_child(@supervisor, child_spec)
   end
 
   def stop_child(spider) do
@@ -35,18 +42,34 @@ defmodule SpiderMan.Application do
     end
   end
 
+  defp spider_child_spec(spider, spider_module, settings) do
+    %{
+      id: spider,
+      start: {spider_module, :start_link, [settings]},
+      type: :supervisor
+    }
+  end
+
   defp merge_settings(spider, spider_settings) do
     default_settings = SpiderMan.default_settings()
     global_settings = Application.get_env(:spider_man, :global_settings, [])
     settings = Utils.merge_settings(default_settings, global_settings)
 
-    with {:module, _} <- Code.ensure_loaded(spider),
-         true <- function_exported?(spider, :settings, 0) do
-      Utils.merge_settings(settings, spider.settings())
-    else
-      {:error, _} -> raise "Spider module: #{inspect(spider)} undefined!"
-      false -> settings
-    end
-    |> Utils.merge_settings(spider_settings)
+    spider_module =
+      Keyword.get_lazy(spider_settings, :spider_module, fn ->
+        Keyword.get(settings, :spider_module, spider)
+      end)
+
+    settings =
+      with {:module, _} <- Code.ensure_loaded(spider_module),
+           true <- function_exported?(spider_module, :settings, 0) do
+        Utils.merge_settings(settings, spider_module.settings())
+      else
+        {:error, _} -> raise "Spider module: #{inspect(spider_module)} undefined!"
+        false -> settings
+      end
+      |> Utils.merge_settings(spider_settings)
+
+    Keyword.merge(settings, spider: spider, spider_module: spider_module)
   end
 end

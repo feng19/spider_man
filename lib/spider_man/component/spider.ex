@@ -15,9 +15,9 @@ defmodule SpiderMan.Spider do
 
     case Pipeline.pipe(context.pipelines, data) do
       response when is_struct(response) ->
-        spider = context.spider
+        spider_module = context.spider_module
 
-        case spider.handle_response(response, context) do
+        case spider_module.handle_response(response, context) do
           return when is_map(return) ->
             case Map.get(return, :requests, []) do
               [] ->

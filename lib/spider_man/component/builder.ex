@@ -32,6 +32,8 @@ defmodule SpiderMan.Component.Builder do
     end
   end
 
+  def process_name(spider, component), do: :"#{spider}.#{Module.split(component) |> List.last()}"
+
   def start_link(component, options) do
     options = transform_broadway_options(component, options)
     Broadway.start_link(component, options)
@@ -39,7 +41,7 @@ defmodule SpiderMan.Component.Builder do
 
   defp transform_broadway_options(component, options) do
     options = Map.new(options)
-    spider = options.spider
+    %{spider: spider, spider_module: spider_module} = options
     opts = Map.merge(%{next_tid: nil, pipelines: [], additional_specs: []}, options)
     {pipelines, opts} = Pipeline.prepare_for_start(opts.pipelines, opts)
 
@@ -47,7 +49,7 @@ defmodule SpiderMan.Component.Builder do
       "!! spider: #{inspect(spider)}, component: #{inspect(component)} setup prepare_for_start_pipelines finish."
     )
 
-    ets_producer_options = opts |> Map.take([:tid, :additional_specs]) |> Map.to_list()
+    ets_producer_options = opts |> Map.take([:tid, :additional_specs, :status]) |> Map.to_list()
     processor = Map.get(opts, :processor, [])
 
     producer = [
@@ -67,10 +69,10 @@ defmodule SpiderMan.Component.Builder do
     context =
       opts
       |> Map.get(:context, %{})
-      |> Map.merge(%{spider: spider, pipelines: pipelines})
+      |> Map.merge(%{spider: spider, spider_module: spider_module, pipelines: pipelines})
 
     [
-      name: :"#{spider}.#{Module.split(component) |> List.last()}",
+      name: process_name(spider, component),
       producer: producer,
       processors: [default: processor],
       batchers: Map.get(opts, :batchers, []),
