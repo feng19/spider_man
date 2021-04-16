@@ -5,17 +5,7 @@ defmodule SpiderMan.Pipeline.SetCookie do
   @behaviour SpiderMan.Pipeline
 
   @impl true
-  def call(%Response{env: env} = response, state) do
-    env.headers
-    |> Stream.filter(&match?({"set-cookie", _}, &1))
-    |> Enum.map(fn {_, cookie} ->
-      String.split(cookie, ";", parts: 2) |> hd()
-    end)
-    |> update_cookies(state)
-
-    response
-  end
-
+  # when handling request, call by downloader component
   def call(%Request{options: options} = request, %{tid: tid}) do
     case :ets.lookup(tid, :cookies_str) do
       [{_, ""}] ->
@@ -26,6 +16,18 @@ defmodule SpiderMan.Pipeline.SetCookie do
         options = Keyword.update(options, :headers, [header], &[header | &1])
         %{request | options: options}
     end
+  end
+
+  # when handling response, call by spider component
+  def call(%Response{env: env} = response, state) do
+    env.headers
+    |> Stream.filter(&match?({"set-cookie", _}, &1))
+    |> Enum.map(fn {_, cookie} ->
+      String.split(cookie, ";", parts: 2) |> hd()
+    end)
+    |> update_cookies(state)
+
+    response
   end
 
   @impl true
@@ -51,7 +53,8 @@ defmodule SpiderMan.Pipeline.SetCookie do
 
         _ ->
           {:ok, agent} = Agent.start_link(fn -> cookies end)
-          :ets.insert(tid, {:cookies_agent, agent})
+          cookies_str = Enum.join(cookies, "; ")
+          :ets.insert(tid, cookies_agent: agent, cookies_str: cookies_str)
           %{tid: tid, agent: agent}
       end
 
@@ -64,7 +67,7 @@ defmodule SpiderMan.Pipeline.SetCookie do
     Agent.update(agent, fn old ->
       cookies = Enum.uniq(cookies ++ old)
       cookies_str = Enum.join(cookies, "; ")
-      :ets.insert(tid, [{:cookies, cookies}, {:cookies_str, cookies_str}])
+      :ets.insert(tid, cookies: cookies, cookies_str: cookies_str)
       cookies
     end)
   end

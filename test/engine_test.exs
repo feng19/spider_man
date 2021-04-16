@@ -1,4 +1,4 @@
-defmodule SpiderMan.EngineText do
+defmodule SpiderMan.EngineTest do
   use ExUnit.Case, async: true
   alias SpiderMan.{Engine, CommonSpider, Request, Response, Item, Utils}
 
@@ -116,7 +116,7 @@ defmodule SpiderMan.EngineText do
     assert state.common_pipeline_tid == item_processor_options[:common_pipeline_tid]
     assert state.item_processor_pipeline_tid == item_processor_options[:pipeline_tid]
     assert [] = item_processor_options[:pipelines]
-    assert %{storage: _, storage_options: _} = item_processor_options[:context]
+    assert %{storage: _, storage_context: _} = item_processor_options[:context]
   end
 
   describe "prepare_for_* callbacks" do

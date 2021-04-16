@@ -17,8 +17,8 @@ defmodule SpiderMan.Pipeline.JsonEncode2File do
 
   @impl true
   def prepare_for_start(arg, options) do
-    if Code.ensure_loaded?(Jason) do
-      raise "Please add Jason to your deps."
+    unless Code.ensure_loaded?(Jason) do
+      raise "Please add Jason lib to your deps."
     end
 
     {arg, options}

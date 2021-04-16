@@ -6,14 +6,14 @@ defmodule SpiderMan.Downloader do
   alias SpiderMan.{Response, Pipeline}
 
   @impl true
-  def handle_message(_processor, message, context) do
+  def handle_message(_processor, message, %{spider: spider} = context) do
     data = message.data
 
     if context[:debug] do
-      Logger.debug("Downloader get message: #{inspect(data)}")
+      Logger.debug("Downloader get message: #{inspect(data)}", spider: spider)
     end
 
-    case Pipeline.pipe(context.pipelines, data) do
+    case Pipeline.call(context.pipelines, data, spider) do
       %{url: url, options: options} ->
         requester = context.requester
 

@@ -14,7 +14,7 @@ defmodule SpiderMan.Pipeline.DuplicateFilter do
   end
 
   @impl true
-  def prepare_for_start(:all_components, options) do
+  def prepare_for_start(:common, options) do
     {options[:common_pipeline_tid], options}
   end
 

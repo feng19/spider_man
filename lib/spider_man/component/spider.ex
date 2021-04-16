@@ -6,14 +6,14 @@ defmodule SpiderMan.Spider do
   alias SpiderMan.Pipeline
 
   @impl true
-  def handle_message(_processor, message, context) do
+  def handle_message(_processor, message, %{spider: spider} = context) do
     data = message.data
 
     if context[:debug] do
-      Logger.debug("Spider get message: #{inspect(data)}")
+      Logger.debug("Spider get message: #{inspect(data)}", spider: spider)
     end
 
-    case Pipeline.pipe(context.pipelines, data) do
+    case Pipeline.call(context.pipelines, data, spider) do
       response when is_struct(response) ->
         spider_module = context.spider_module
 

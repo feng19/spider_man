@@ -2,7 +2,7 @@ defmodule SpiderMan.Engine do
   @moduledoc false
   use GenServer, shutdown: 60_000
   require Logger
-  alias SpiderMan.{Downloader, Spider, ItemProcessor, Pipeline, Utils}
+  alias SpiderMan.{Downloader, Spider, ItemProcessor, Pipeline, Requester, Storage, Utils}
 
   @type state :: map
   @components [:downloader, :spider, :item_processor]
@@ -58,11 +58,14 @@ defmodule SpiderMan.Engine do
 
   @impl true
   def init(options) do
+    Process.flag(:trap_exit, true)
     state = Map.new(options)
     spider = state.spider
     log_prefix = "!! spider: #{inspect(spider)},"
+    Logger.metadata(spider: spider)
+    log_file_path = configure_file_logger(spider, state[:log2file])
+    Logger.info("#{log_prefix} configure_file_logger file: #{log_file_path} finish.")
     Logger.info("#{log_prefix} setup starting with spider_module: #{state.spider_module}.")
-    Process.flag(:trap_exit, true)
     component_sup = SpiderMan.Component.Supervisor.process_name(spider)
     continue_status = Map.get(state, :status, :running)
 
@@ -71,7 +74,8 @@ defmodule SpiderMan.Engine do
         status: :preparing,
         continue_status: continue_status,
         component_sup: component_sup,
-        log_prefix: log_prefix
+        log_prefix: log_prefix,
+        log_file_path: log_file_path
       })
 
     {:ok, state, {:continue, :start_components}}
@@ -197,7 +201,7 @@ defmodule SpiderMan.Engine do
   @impl true
   def terminate(reason, state) do
     %{spider_module: spider_module, log_prefix: log_prefix} = state
-    level = if reason in [:normal, :shutdown], do: :info, else: :warning
+    level = if reason in [:normal, :shutdown], do: :info, else: :error
     Logger.log(level, "#{log_prefix} terminate by reason: #{inspect(reason)}.")
 
     # prepare_for_stop_component
@@ -205,10 +209,22 @@ defmodule SpiderMan.Engine do
     |> Enum.zip([state.downloader_options, state.spider_options, state.item_processor_options])
     |> Enum.each(fn {component, options} ->
       prepare_for_stop_component(component, options, spider_module)
-      Logger.info("#{log_prefix} #{component} component prepare_for_stop_pipelines finish.")
+      Logger.info("#{log_prefix} #{component} component prepare_for_stop finish.")
+
+      options
+      |> Keyword.fetch!(:pipelines)
+      |> Pipeline.prepare_for_stop()
+
+      Logger.info("#{log_prefix} #{component} component pipelines prepare_for_stop finish.")
     end)
 
-    Logger.log(level, "#{log_prefix} prepare_for_stop_component finish.")
+    Logger.log(level, "#{log_prefix} components prepare_for_stop finish.")
+
+    Requester.prepare_for_stop(state.downloader_options)
+    Logger.log(level, "#{log_prefix} Requester prepare_for_stop finish.")
+
+    Storage.prepare_for_stop(state.item_processor_options)
+    Logger.log(level, "#{log_prefix} Storage prepare_for_stop finish.")
 
     # prepare_for_stop
     if function_exported?(spider_module, :prepare_for_stop, 1) do
@@ -216,7 +232,7 @@ defmodule SpiderMan.Engine do
     end
 
     Logger.log(level, "#{log_prefix} prepare_for_stop finish.")
-    Logger.log(level, "#{log_prefix} stop finish.")
+    Logger.log(level, "#{log_prefix} Engine stopped.")
 
     :ok
   end
@@ -233,58 +249,6 @@ defmodule SpiderMan.Engine do
     if function_exported?(spider_module, :prepare_for_stop_component, 2) do
       spider_module.prepare_for_stop_component(component, options)
     end
-
-    options
-    |> Keyword.fetch!(:pipelines)
-    |> Pipeline.prepare_for_stop()
-  end
-
-  defp setup_requester(options) do
-    {requester, arg} =
-      case Keyword.get(options, :requester, SpiderMan.Requester.Finch) do
-        {requester, _arg} = r when is_atom(requester) -> r
-        requester when is_atom(requester) -> {requester, []}
-      end
-
-    options =
-      Keyword.update(
-        options,
-        :context,
-        %{requester: requester},
-        &Map.put(&1, :requester, requester)
-      )
-
-    with {:module, _} <- Code.ensure_loaded(requester),
-         true <- function_exported?(requester, :prepare_for_start, 2) do
-      requester.prepare_for_start(arg, options)
-    else
-      _ -> options
-    end
-  end
-
-  defp setup_item_processor_context(options) do
-    {storage, arg} =
-      case Keyword.get(options, :storage, SpiderMan.Storage.Log) do
-        {storage, _arg} = r when is_atom(storage) -> r
-        storage when is_atom(storage) -> {storage, []}
-      end
-
-    options =
-      with {:module, _} <- Code.ensure_loaded(storage),
-           true <- function_exported?(storage, :prepare_for_start, 2) do
-        storage.prepare_for_start(arg, options)
-      else
-        _ -> options
-      end
-
-    storage_options = Keyword.get(options, :storage_options, [])
-
-    context =
-      options
-      |> Keyword.get(:context, %{})
-      |> Map.merge(%{storage: storage, storage_options: storage_options})
-
-    Keyword.put(options, :context, context)
   end
 
   defp call_producers(state, msg) do
@@ -410,7 +374,7 @@ defmodule SpiderMan.Engine do
       ]
       |> Kernel.++(broadway_base_options)
       |> Kernel.++(state.downloader_options)
-      |> setup_requester()
+      |> Requester.prepare_for_start()
       |> prepare_for_start_component(:downloader, spider_module)
 
     spider_options =
@@ -427,7 +391,7 @@ defmodule SpiderMan.Engine do
       [tid: item_processor_tid, pipeline_tid: item_processor_pipeline_tid]
       |> Kernel.++(broadway_base_options)
       |> Kernel.++(state.item_processor_options)
-      |> setup_item_processor_context()
+      |> Storage.prepare_for_start()
       |> prepare_for_start_component(:item_processor, spider_module)
 
     Logger.info("#{log_prefix} setup prepare_for_start_component finish.")
@@ -469,4 +433,25 @@ defmodule SpiderMan.Engine do
   defp get_component_pid(:downloader, %{downloader_pid: pid}), do: pid
   defp get_component_pid(:spider, %{spider_pid: pid}), do: pid
   defp get_component_pid(:item_processor, %{item_processor_pid: pid}), do: pid
+
+  defp configure_file_logger(_spider, false), do: :skiped
+
+  defp configure_file_logger(spider, log2file) when log2file in [nil, true] do
+    timestamp = System.system_time(:second)
+    log_file_path = Path.join([System.tmp_dir(), inspect(spider), "#{timestamp}.log"])
+    configure_file_logger(spider, log_file_path)
+  end
+
+  defp configure_file_logger(spider, log_file_path) do
+    backend = {LoggerFileBackend, spider}
+    Logger.add_backend(backend)
+
+    Logger.configure_backend(backend,
+      path: log_file_path,
+      level: :debug,
+      metadata_filter: [spider: spider]
+    )
+
+    log_file_path
+  end
 end

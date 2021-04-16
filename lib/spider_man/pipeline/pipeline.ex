@@ -12,13 +12,14 @@ defmodule SpiderMan.Pipeline do
   @callback prepare_for_stop(arg) :: :ok
   @optional_callbacks call: 2, prepare_for_start: 2, prepare_for_stop: 1
 
-  def pipe(pipelines, acc) do
-    Enum.reduce_while(pipelines, acc, &do_pipe/2)
+  def call(pipelines, acc, spider) do
+    Enum.reduce_while(pipelines, acc, &do_call(&1, &2, spider))
   end
 
-  defp do_pipe(pipeline, acc) do
+  defp do_call(pipeline, acc, spider) do
     case pipeline do
       {m, f, arg} -> apply(m, f, [acc, arg])
+      {fun, arg} -> fun.(arg, acc)
       fun -> fun.(acc)
     end
     |> case do
@@ -28,11 +29,11 @@ defmodule SpiderMan.Pipeline do
     end
   rescue
     reason ->
-      Logger.error(Exception.format(:error, reason, __STACKTRACE__))
+      Logger.error(Exception.format(:error, reason, __STACKTRACE__), spider: spider)
       {:halt, {:error, reason}}
   catch
     error, reason ->
-      Logger.error(Exception.format(error, reason, __STACKTRACE__))
+      Logger.error(Exception.format(error, reason, __STACKTRACE__), spider: spider)
       {:halt, {:error, reason}}
   end
 
@@ -41,6 +42,10 @@ defmodule SpiderMan.Pipeline do
   end
 
   defp do_prepare_for_start(fun, options) when is_function(fun, 1), do: {fun, options}
+  defp do_prepare_for_start(fun, options) when is_function(fun, 2), do: {{fun, nil}, options}
+
+  defp do_prepare_for_start({fun, arg}, options) when is_function(fun, 2),
+    do: {{fun, arg}, options}
 
   defp do_prepare_for_start(pipeline, options) do
     {m, f, arg} =
@@ -52,11 +57,13 @@ defmodule SpiderMan.Pipeline do
 
     {arg, options} =
       with {:module, _} <- Code.ensure_loaded(m),
-           true <- function_exported?(m, :prepare_for_start, 2) do
+           true <- function_exported?(m, f, 2),
+           {_, true} <- {:start, function_exported?(m, :prepare_for_start, 2)} do
         m.prepare_for_start(arg, options)
       else
         {:error, _} -> raise "Pipeline module: #{inspect(m)} undefined!"
-        false -> {arg, options}
+        false -> raise "Pipeline module: #{inspect(m)} undefined function #{to_string(f)}/2!"
+        {:start, false} -> {arg, options}
       end
 
     {{m, f, arg}, options}
@@ -67,7 +74,7 @@ defmodule SpiderMan.Pipeline do
   end
 
   defp do_prepare_for_stop({m, _f, arg}) do
-    if function_exported?(m, :prepare_for_stop, 2) do
+    if function_exported?(m, :prepare_for_stop, 1) do
       m.prepare_for_stop(arg)
     end
   end

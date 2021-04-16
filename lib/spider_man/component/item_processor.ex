@@ -6,14 +6,14 @@ defmodule SpiderMan.ItemProcessor do
   alias SpiderMan.Pipeline
 
   @impl true
-  def handle_message(_processor, message, context) do
+  def handle_message(_processor, message, %{spider: spider} = context) do
     data = message.data
 
     if context[:debug] do
-      Logger.debug("ItemProcessor get message: #{inspect(data)}")
+      Logger.debug("ItemProcessor get message: #{inspect(data)}", spider: spider)
     end
 
-    case Pipeline.pipe(context.pipelines, data) do
+    case Pipeline.call(context.pipelines, data, spider) do
       :skiped -> Message.failed(message, :skiped)
       {:error, reason} -> Message.failed(message, reason)
       {batcher, item} -> %{message | data: item, batcher: batcher}
@@ -24,11 +24,11 @@ defmodule SpiderMan.ItemProcessor do
   @impl true
   def handle_batch(batcher, messages, _batch_info, %{
         storage: storage,
-        storage_options: storage_options
+        storage_context: storage_context
       }) do
     items = Stream.map(messages, & &1.data)
 
-    storage.store(batcher, items, storage_options)
+    storage.store(batcher, items, storage_context)
     |> Stream.zip(messages)
     |> Enum.map(fn
       {:ok, message} -> message
