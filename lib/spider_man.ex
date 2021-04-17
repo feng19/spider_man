@@ -60,7 +60,7 @@ defmodule SpiderMan do
     ],
     item_processor_options: [
       pipelines: [DuplicateFilter],
-      storage: Storage.Log,
+      storage: Storage.JsonLines,
       context: %{},
       batchers: [
         default: [

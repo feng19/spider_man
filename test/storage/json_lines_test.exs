@@ -5,10 +5,11 @@ defmodule SpiderMan.Storage.JsonLinesTest do
   setup_all do
     File.rm_rf("data")
     on_exit(fn -> File.rm_rf("data") end)
+    [spider: JsonLinesTest]
   end
 
   @tag :tmp_dir
-  test "prepare_for start and stop", %{tmp_dir: tmp_dir} do
+  test "prepare_for start and stop", %{tmp_dir: tmp_dir, spider: spider} do
     # set file_path
     file_path = Path.join(tmp_dir, "data_#{System.system_time(:second)}.jsonl")
 
@@ -19,8 +20,6 @@ defmodule SpiderMan.Storage.JsonLinesTest do
     assert not Process.alive?(io_device)
 
     # unset file_path
-    spider = JsonLinesTest
-
     assert [context: %{storage_context: %{io_device: io_device, file_path: _}}, spider: ^spider] =
              JsonLines.prepare_for_start(nil, spider: spider)
 
@@ -28,9 +27,7 @@ defmodule SpiderMan.Storage.JsonLinesTest do
     assert not Process.alive?(io_device)
   end
 
-  test "store" do
-    spider = JsonLinesTest
-
+  test "store", %{spider: spider} do
     [context: %{storage_context: storage_context}, spider: ^spider] =
       JsonLines.prepare_for_start(nil, spider: spider)
 

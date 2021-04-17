@@ -200,6 +200,7 @@ defmodule SpiderMan.Engine do
 
   @impl true
   def terminate(reason, state) do
+    # todo: wait all broadway stopped then go continue
     %{spider_module: spider_module, log_prefix: log_prefix} = state
     level = if reason in [:normal, :shutdown], do: :info, else: :error
     Logger.log(level, "#{log_prefix} terminate by reason: #{inspect(reason)}.")

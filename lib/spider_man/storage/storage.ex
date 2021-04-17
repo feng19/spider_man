@@ -11,7 +11,7 @@ defmodule SpiderMan.Storage do
 
   def prepare_for_start(options) do
     options
-    |> Keyword.get(:storage, SpiderMan.Storage.Log)
+    |> Keyword.get(:storage, SpiderMan.Storage.JsonLines)
     |> prepare_for_start(options)
   end
 
@@ -31,12 +31,9 @@ defmodule SpiderMan.Storage do
         _ -> options
       end
 
-    storage_context = Keyword.get(options, :storage_context, %{}) |> Map.put_new(:spider, spider)
-
-    context =
-      options
-      |> Keyword.get(:context, %{})
-      |> Map.merge(%{storage: storage, storage_context: storage_context})
+    context = Keyword.get(options, :context, %{})
+    storage_context = Map.get(context, :storage_context, %{}) |> Map.put_new(:spider, spider)
+    context = Map.merge(context, %{storage: storage, storage_context: storage_context})
 
     Keyword.merge(options, storage: storage, context: context)
   end

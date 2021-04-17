@@ -7,6 +7,13 @@ defmodule SpiderMan.CommonSpider do
     SpiderMan.start(spider, settings)
   end
 
+  def ensure_started(spider, callbacks, settings \\ []) do
+    with {:ok, _} = return <- start(spider, callbacks, settings) do
+      SpiderMan.wait_until(spider)
+      return
+    end
+  end
+
   def start_link(options) do
     with {callbacks, options} when callbacks != nil <- Keyword.pop(options, :callbacks),
          true <- Keyword.keyword?(callbacks),

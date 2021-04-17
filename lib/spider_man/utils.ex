@@ -41,6 +41,8 @@ defmodule SpiderMan.Utils do
     end)
   end
 
+  def producer_status(broadway), do: call_producer(broadway, :status)
+
   def call_producer(broadway, msg) do
     [producer_name] = Broadway.producer_names(broadway)
     GenStage.call(producer_name, msg)

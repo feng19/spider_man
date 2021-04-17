@@ -1,13 +1,14 @@
-defmodule SpiderManTest do
+defmodule SpiderMan.SpiderManTest do
   use ExUnit.Case, async: true
   alias SpiderMan.Utils
   # doctest SpiderMan
 
   setup_all do
-    spider = SpiderMan.Modules.setup_all()
+    spider = SpiderManTest
+    SpiderMan.ensure_started(spider)
 
     on_exit(fn ->
-      SpiderMan.Modules.on_exit(spider)
+      SpiderMan.stop(spider)
     end)
 
     [spider: spider]
@@ -35,8 +36,7 @@ defmodule SpiderManTest do
 
   @tag spider_stopped: true
   test "start/stop Spider", %{spider: spider} do
-    {:ok, pid} = SpiderMan.start(spider)
-    SpiderMan.wait_until(spider)
+    {:ok, pid} = SpiderMan.ensure_started(spider)
     assert is_pid(pid)
     assert Process.alive?(pid)
     assert {:error, {:already_started, _}} = SpiderMan.start(spider)
@@ -65,7 +65,11 @@ defmodule SpiderManTest do
 
   test "insert requests for spider", %{spider: spider} do
     requests = Utils.build_requests(1..10)
+    :ok = SpiderMan.suspend(spider)
     assert SpiderMan.insert_requests(spider, requests)
+    %{downloader_tid: tid} = SpiderMan.get_state(spider)
+    assert 10 = :ets.info(tid, :size)
+    :ok = SpiderMan.continue(spider)
   end
 
   test "suspend/continue Spider", %{spider: spider} do
@@ -97,6 +101,7 @@ defmodule SpiderManTest do
     assert not Process.alive?(item_processor_pid)
     assert Process.alive?(spider_sup_pid)
 
+    # wait auto restart
     SpiderMan.wait_until(spider)
     engine_pid = get_engine_pid(spider)
     assert Process.alive?(engine_pid)
@@ -118,6 +123,7 @@ defmodule SpiderManTest do
     assert not Process.alive?(engine_pid)
     assert Process.alive?(spider_sup_pid)
 
+    # wait auto restart
     SpiderMan.wait_until(spider)
     engine_pid = get_engine_pid(spider)
     assert Process.alive?(engine_pid)

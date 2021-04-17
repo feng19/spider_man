@@ -3,10 +3,11 @@ defmodule SpiderMan.EngineTest do
   alias SpiderMan.{Engine, CommonSpider, Request, Response, Item, Utils}
 
   setup_all do
-    spider = SpiderMan.Modules.setup_all()
+    spider = EngineTest
+    SpiderMan.ensure_started(spider)
 
     on_exit(fn ->
-      SpiderMan.Modules.on_exit(spider)
+      SpiderMan.stop(spider)
     end)
 
     [spider: spider]
@@ -39,11 +40,10 @@ defmodule SpiderMan.EngineTest do
 
     SpiderMan.stop(spider)
 
-    CommonSpider.start(spider, [
+    CommonSpider.ensure_started(spider, [
       {:handle_response, empty_handle_response_fun()}
     ])
 
-    SpiderMan.wait_until(spider)
     state = SpiderMan.get_state(spider)
     assert %{spider: ^spider, spider_module: CommonSpider, callbacks: _, status: :running} = state
   end
@@ -152,7 +152,7 @@ defmodule SpiderMan.EngineTest do
     end
 
     defp setup_callback(spider, key, fun) do
-      CommonSpider.start(spider, [
+      CommonSpider.ensure_started(spider, [
         {:handle_response, empty_handle_response_fun()},
         {key, fun}
       ])
@@ -176,7 +176,6 @@ defmodule SpiderMan.EngineTest do
     test "prepare_for_stop", %{spider: spider} do
       key = :prepare_for_stop
       setup_callback(spider, key, 1)
-      SpiderMan.wait_until(spider)
       SpiderMan.stop(spider)
       assert_receive {^spider, ^key}
     end
@@ -184,7 +183,6 @@ defmodule SpiderMan.EngineTest do
     test "prepare_for_stop_component", %{spider: spider} do
       key = :prepare_for_stop_component
       setup_callback(spider, key, 2)
-      SpiderMan.wait_until(spider)
       SpiderMan.stop(spider)
       assert_receive {^spider, ^key, :downloader}, 200
       assert_receive {^spider, ^key, :spider}
@@ -199,14 +197,41 @@ defmodule SpiderMan.EngineTest do
       item_processor_pid: item_processor_pid
     } = SpiderMan.get_state(spider)
 
-    Enum.map(
+    Enum.each(
       [downloader: downloader_pid, spider: spider_pid, item_processor: item_processor_pid],
       fn {component, pid} ->
         assert :ok = Engine.suspend_component(spider, component)
-        assert :suspended = Utils.call_producer(pid, :status)
+        assert :suspended = Utils.producer_status(pid)
         assert :ok = Engine.continue_component(spider, component)
-        assert :running = Utils.call_producer(pid, :status)
+        assert :running = Utils.producer_status(pid)
       end
+    )
+  end
+
+  test "continue_status", %{spider: spider} do
+    :ok = SpiderMan.stop(spider)
+    status = :suspended
+    assert {:ok, _} = SpiderMan.start(spider, status: status)
+    SpiderMan.wait_until(spider, status)
+
+    assert %{
+             status: ^status,
+             downloader_pid: downloader_pid,
+             spider_pid: spider_pid,
+             item_processor_pid: item_processor_pid
+           } = SpiderMan.get_state(spider)
+
+    Enum.each(
+      [downloader_pid, spider_pid, item_processor_pid],
+      &assert(:suspended = Utils.producer_status(&1))
+    )
+
+    :ok = SpiderMan.continue(spider)
+    assert :running = SpiderMan.status(spider)
+
+    Enum.each(
+      [downloader_pid, spider_pid, item_processor_pid],
+      fn pid -> assert :running = Utils.producer_status(pid) end
     )
   end
 
@@ -268,8 +293,7 @@ defmodule SpiderMan.EngineTest do
 
     test "setup_ets_tables - load_from_file", %{spider: spider, file_name: file_name} do
       :ok = SpiderMan.stop(spider)
-      assert {:ok, _} = SpiderMan.start(spider, load_from_file: file_name)
-      SpiderMan.wait_until(spider)
+      assert {:ok, _} = SpiderMan.ensure_started(spider, load_from_file: file_name)
       Process.sleep(500)
       check_ets_tables(spider, 0, 1)
     end

@@ -10,7 +10,11 @@ defmodule SpiderMan.Modules do
                  [
                    downloader_options: [pipelines: [], requester: SpiderMan.Requester.JustReturn],
                    spider_options: [pipelines: []],
-                   item_processor_options: [pipelines: [], batchers: []]
+                   item_processor_options: [
+                     pipelines: [],
+                     storage: SpiderMan.Storage.Log,
+                     batchers: []
+                   ]
                  ]
                end
 
@@ -22,50 +26,10 @@ defmodule SpiderMan.Modules do
       {:ok, spider}
     end
   end
-
-  def create_spiders(count) do
-    Enum.map(1..count, fn n ->
-      {:ok, spider} = create_spider(:"#{Spider}#{n}")
-      spider
-    end)
-  end
-
-  def setup_all do
-    spider = get()
-    {:ok, _} = SpiderMan.start(spider)
-    SpiderMan.wait_until(spider)
-    spider
-  end
-
-  def on_exit(spider) do
-    SpiderMan.stop(spider)
-    put(spider)
-  end
-
-  def start_agent(count) do
-    spiders = create_spiders(count)
-    {:ok, agent} = Agent.start_link(fn -> spiders end)
-    :persistent_term.put(:spiders_agent, agent)
-  end
-
-  def get() do
-    agent = :persistent_term.get(:spiders_agent)
-
-    with nil <-
-           Agent.get_and_update(agent, fn
-             [spider | spiders] -> {spider, spiders}
-             [] -> {nil, []}
-           end) do
-      Process.sleep(100)
-      get()
-    end
-  end
-
-  def put(spider) do
-    agent = :persistent_term.get(:spiders_agent)
-    Agent.update(agent, fn spiders -> [spider | spiders] end)
-  end
 end
+
+SpiderMan.Modules.create_spider(SpiderManTest)
+SpiderMan.Modules.create_spider(EngineTest)
 
 defmodule Spider0 do
   use SpiderMan

@@ -4,13 +4,16 @@ defmodule SpiderMan.CommonSpiderTest do
   alias SpiderMan.{CommonSpider, Item}
 
   setup_all do
+    spider = CommonSpiderTest
+
     on_exit(fn ->
-      SpiderMan.stop(CommonSpiderTest)
+      SpiderMan.stop(spider)
     end)
+
+    [spider: spider]
   end
 
-  test "check callbacks" do
-    spider = CommonSpiderTest
+  test "check callbacks", %{spider: spider} do
     wrong_fun = fn -> nil end
     handle_response = fn _response, _context -> %{} end
     prepare_for_start = fn _stage, state -> state end
@@ -48,19 +51,19 @@ defmodule SpiderMan.CommonSpiderTest do
     assert {:error, ^error_msg} = CommonSpider.start_link(callbacks: [handle_response: wrong_fun])
 
     # wrong callback - prepare_for_start
-    test_wrong_callback(:prepare_for_start, 2, handle_response, wrong_fun)
+    test_wrong_callback(:prepare_for_start, 2, spider)
 
     # wrong callback - prepare_for_stop
-    test_wrong_callback(:prepare_for_stop, 1, handle_response, wrong_fun)
+    test_wrong_callback(:prepare_for_stop, 1, spider)
 
     # wrong callback - prepare_for_start_component
-    test_wrong_callback(:prepare_for_start_component, 2, handle_response, wrong_fun)
+    test_wrong_callback(:prepare_for_start_component, 2, spider)
 
     # wrong callback - prepare_for_stop_component
-    test_wrong_callback(:prepare_for_stop_component, 2, handle_response, wrong_fun)
+    test_wrong_callback(:prepare_for_stop_component, 2, spider)
 
     assert {:ok, _pid} =
-             CommonSpider.start(spider,
+             CommonSpider.ensure_started(spider,
                handle_response: handle_response,
                prepare_for_start: prepare_for_start,
                prepare_for_stop: prepare_for_stop,
@@ -71,12 +74,13 @@ defmodule SpiderMan.CommonSpiderTest do
     SpiderMan.stop(spider)
   end
 
-  defp test_wrong_callback(key, arity, handle_response, wrong_fun) do
-    spider = CommonSpiderTest
+  defp test_wrong_callback(key, arity, spider) do
+    wrong_fun = fn -> nil end
+    handle_response = fn _response, _context -> %{} end
 
     assert capture_log([level: :warn], fn ->
              {:ok, _pid} =
-               CommonSpider.start(spider, [
+               CommonSpider.ensure_started(spider, [
                  {:handle_response, handle_response},
                  {key, :wrong_type}
                ])
@@ -89,7 +93,7 @@ defmodule SpiderMan.CommonSpiderTest do
 
     assert capture_log([level: :warn], fn ->
              {:ok, _pid} =
-               CommonSpider.start(spider, [
+               CommonSpider.ensure_started(spider, [
                  {:handle_response, handle_response},
                  {key, wrong_fun}
                ])
@@ -101,14 +105,12 @@ defmodule SpiderMan.CommonSpiderTest do
              }, please use fun/#{arity} for this option."
   end
 
-  test "setup_callbacks" do
-    spider = CommonSpiderTest
+  test "setup_callbacks", %{spider: spider} do
     handle_response = fn _response, _context -> %{} end
     prepare_for_start_component = fn _component, options -> options end
     prepare_for_stop_component = fn _component, _options -> :ok end
 
-    assert {:ok, _pid} = CommonSpider.start(spider, handle_response: handle_response)
-    SpiderMan.wait_until(spider)
+    assert {:ok, _pid} = CommonSpider.ensure_started(spider, handle_response: handle_response)
     state = SpiderMan.get_state(spider)
     assert false == Keyword.has_key?(state.downloader_options, :prepare_for_start)
     assert false == Keyword.has_key?(state.downloader_options, :prepare_for_stop)
@@ -121,13 +123,12 @@ defmodule SpiderMan.CommonSpiderTest do
     SpiderMan.stop(spider)
 
     assert {:ok, _pid} =
-             CommonSpider.start(spider,
+             CommonSpider.ensure_started(spider,
                handle_response: handle_response,
                prepare_for_start_component: prepare_for_start_component,
                prepare_for_stop_component: prepare_for_stop_component
              )
 
-    SpiderMan.wait_until(spider)
     state = SpiderMan.get_state(spider)
     assert Keyword.has_key?(state.downloader_options, :prepare_for_start)
     assert Keyword.has_key?(state.downloader_options, :prepare_for_stop)
