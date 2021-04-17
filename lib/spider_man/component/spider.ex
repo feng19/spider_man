@@ -3,7 +3,7 @@ defmodule SpiderMan.Spider do
   use SpiderMan.Component.Builder
   require Logger
   alias Broadway.Message
-  alias SpiderMan.Pipeline
+  alias SpiderMan.{Pipeline, Utils}
 
   @impl true
   def handle_message(_processor, message, %{spider: spider} = context) do
@@ -29,7 +29,10 @@ defmodule SpiderMan.Spider do
             end
 
             items = Map.get(return, :items, [])
-            %{message | data: items}
+            # push successful events to next_tid
+            Utils.push_events_to_next_producer_ets(context.next_tid, context.tid, items)
+
+            %{message | data: :ok}
 
           {:error, reason} ->
             Message.failed(message, reason)

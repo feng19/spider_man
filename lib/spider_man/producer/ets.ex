@@ -10,7 +10,7 @@ defmodule SpiderMan.Producer.ETS do
   def init(opts) do
     {gen_stage_opts, opts} = Keyword.split(opts, [:buffer_size, :buffer_keep])
     tid = Keyword.fetch!(opts, :tid)
-    retry_interval = Keyword.get(opts, :retry_interval, 500) |> max(300)
+    retry_interval = Keyword.get(opts, :retry_interval, 200)
     status = Keyword.get(opts, :status, :running)
 
     retry_timer =
@@ -20,6 +20,7 @@ defmodule SpiderMan.Producer.ETS do
       end
 
     state = %{
+      name: get_in(opts, [:broadway, :name]),
       status: status,
       tid: tid,
       retry_interval: retry_interval,

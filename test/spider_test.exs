@@ -131,18 +131,17 @@ defmodule SpiderMan.SpiderTest do
   test "high-concurrency", %{spider: spider} do
     SpiderMan.stop(spider)
     pipelines = [Pipeline.Counter]
-    processor = [concurrency: 20]
+    processor = [concurrency: 20, min_demand: 15, max_demand: 30]
+    retry_interval = 50
 
     handle_response = fn
-      %{key: 1000}, _context ->
-        %{items: [Utils.build_item(1000, 1000)]}
+      %{key: {key, 50}}, _context ->
+        %{items: [Utils.build_item({key, 1000}, 1000)]}
 
-      %{key: n}, _context ->
-        max = min(n + 10, 1000)
-        num_list = n..max
-        requests = Utils.build_requests(num_list)
-        items = Enum.zip(num_list, num_list) |> Utils.build_items()
-        %{requests: requests, items: items}
+      %{key: {key, n}}, _context ->
+        request = Utils.build_request({key, n + 1})
+        item = Utils.build_item({key, n}, n)
+        %{requests: [request], items: [item]}
     end
 
     settings = [
@@ -150,38 +149,32 @@ defmodule SpiderMan.SpiderTest do
         rate_limiting: nil,
         pipelines: pipelines,
         processor: processor,
+        retry_interval: retry_interval,
         requester: JustReturn
       ],
-      spider_options: [pipelines: pipelines, processor: processor],
+      spider_options: [pipelines: pipelines, processor: processor, retry_interval: retry_interval],
       item_processor_options: [
         pipelines: pipelines,
         processor: processor,
-        storage: Storage.Log,
+        retry_interval: retry_interval,
         batchers: []
-        # batchers: [
-        #   default: [
-        #     concurrency: 10,
-        #     batch_size: 200,
-        #     batch_timeout: 500
-        #   ]
-        # ]
       ]
     ]
 
     {:ok, _pid} =
       CommonSpider.ensure_started(spider, [handle_response: handle_response], settings)
 
-    requests = List.duplicate(1, 10) |> Utils.build_requests()
-    assert SpiderMan.insert_requests(spider, requests)
-    Process.sleep(30_000)
-    SpiderMan.suspend(spider)
-    Process.sleep(1000)
-
     assert %{
              downloader_pipeline_tid: downloader_pipeline_tid,
              spider_pipeline_tid: spider_pipeline_tid,
              item_processor_pipeline_tid: item_processor_pipeline_tid
            } = SpiderMan.get_state(spider)
+
+    requests = 1..10000 |> Enum.map(&{&1, 1}) |> Utils.build_requests()
+    assert SpiderMan.insert_requests(spider, requests)
+    Process.sleep(5_500)
+    SpiderMan.suspend(spider)
+    Process.sleep(500)
 
     IO.inspect(
       downloader: :ets.lookup_element(downloader_pipeline_tid, Pipeline.Counter, 2),

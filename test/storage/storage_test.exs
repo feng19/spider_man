@@ -13,10 +13,16 @@ defmodule SpiderMan.StorageTest do
     # set file_path
     file_path = Path.join(tmp_dir, "data_#{System.system_time(:second)}.jsonl")
 
-    options = Storage.prepare_for_start(storage: {storage, file_path}, spider: spider)
+    options =
+      Storage.prepare_for_start(
+        storage: {storage, file_path},
+        spider: spider,
+        batchers: :not_empty
+      )
 
     assert [
              spider: ^spider,
+             batchers: :not_empty,
              storage: ^storage,
              context: %{
                storage: ^storage,
@@ -28,10 +34,11 @@ defmodule SpiderMan.StorageTest do
     assert not Process.alive?(io_device)
 
     # unset file_path
-    options = Storage.prepare_for_start(storage: storage, spider: spider)
+    options = Storage.prepare_for_start(storage: storage, spider: spider, batchers: :not_empty)
 
     assert [
              spider: ^spider,
+             batchers: :not_empty,
              storage: ^storage,
              context: %{storage: ^storage, storage_context: %{io_device: io_device, file_path: _}}
            ] = options

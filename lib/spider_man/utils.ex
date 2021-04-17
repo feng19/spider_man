@@ -47,4 +47,19 @@ defmodule SpiderMan.Utils do
     [producer_name] = Broadway.producer_names(broadway)
     GenStage.call(producer_name, msg)
   end
+
+  def push_events_to_next_producer_ets(next_tid, tid, events) do
+    events
+    |> Enum.flat_map(fn
+      list when is_list(list) ->
+        Enum.map(list, &{&1.key, %{&1 | options: [{:prev_tid, tid} | &1.options]}})
+
+      data ->
+        [{data.key, %{data | options: [{:prev_tid, tid} | data.options]}}]
+    end)
+    |> case do
+      [] -> :skip
+      events -> :ets.insert(next_tid, events)
+    end
+  end
 end

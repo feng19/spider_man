@@ -12,8 +12,7 @@ defmodule SpiderMan.Modules do
                    spider_options: [pipelines: []],
                    item_processor_options: [
                      pipelines: [],
-                     storage: SpiderMan.Storage.Log,
-                     batchers: []
+                     storage: SpiderMan.Storage.Log
                    ]
                  ]
                end

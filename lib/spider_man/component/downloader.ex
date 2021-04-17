@@ -3,7 +3,7 @@ defmodule SpiderMan.Downloader do
   use SpiderMan.Component.Builder
   require Logger
   alias Broadway.Message
-  alias SpiderMan.{Response, Pipeline}
+  alias SpiderMan.{Response, Pipeline, Utils}
 
   @impl true
   def handle_message(_processor, message, %{spider: spider} = context) do
@@ -19,7 +19,12 @@ defmodule SpiderMan.Downloader do
 
         case requester.request(url, options, context) do
           {:ok, env} ->
-            %{message | data: %Response{key: url, env: env}}
+            # push successful events to next_tid
+            Utils.push_events_to_next_producer_ets(context.next_tid, context.tid, [
+              %Response{key: url, env: env}
+            ])
+
+            %{message | data: :ok}
 
           {:error, reason} ->
             Message.failed(message, reason)

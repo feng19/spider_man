@@ -41,15 +41,20 @@ defmodule SpiderMan.Component.Builder do
 
   defp transform_broadway_options(component, options) do
     options = Map.new(options)
-    %{spider: spider, spider_module: spider_module} = options
-    opts = Map.merge(%{next_tid: nil, pipelines: [], additional_specs: []}, options)
-    {pipelines, opts} = Pipeline.prepare_for_start(opts.pipelines, opts)
+    spider = options.spider
+    options = Map.merge(%{next_tid: nil, pipelines: [], additional_specs: []}, options)
+    {pipelines, opts} = Pipeline.prepare_for_start(options.pipelines, options)
+    opts = Map.put(opts, :pipelines, pipelines)
 
     Logger.info(
-      "!! spider: #{inspect(spider)}, component: #{inspect(component)} setup prepare_for_start_pipelines finish."
+      "!! spider: #{inspect(spider)}, component: #{inspect(component)} pipelines setup prepare_for_start finish."
     )
 
-    ets_producer_options = opts |> Map.take([:tid, :additional_specs, :status]) |> Map.to_list()
+    ets_producer_options =
+      opts
+      |> Map.take([:tid, :additional_specs, :status, :buffer_size, :buffer_keep, :retry_interval])
+      |> Map.to_list()
+
     processor = Map.get(opts, :processor, [])
 
     producer = [
@@ -69,7 +74,7 @@ defmodule SpiderMan.Component.Builder do
     context =
       opts
       |> Map.get(:context, %{})
-      |> Map.merge(%{spider: spider, spider_module: spider_module, pipelines: pipelines})
+      |> Map.merge(Map.take(opts, [:tid, :next_tid, :spider, :spider_module, :pipelines]))
 
     [
       name: process_name(spider, component),
@@ -88,29 +93,9 @@ defmodule SpiderMan.Component.Builder do
   end
 
   @impl Acknowledger
-  def ack(%{tid: tid, next_tid: next_tid}, successful, failed) when next_tid != nil do
-    # push successful events to next_tid
-    successful
-    |> Enum.flat_map(fn
-      %{data: list} when is_list(list) ->
-        Enum.map(list, &{&1.key, %{&1 | options: [{:prev_tid, tid} | &1.options]}})
+  def ack(%{tid: nil}, _successful, _failed), do: :ok
 
-      %{data: data} ->
-        [{data.key, %{data | options: [{:prev_tid, tid} | data.options]}}]
-    end)
-    |> case do
-      [] -> :skip
-      successful_events -> :ets.insert(next_tid, successful_events)
-    end
-
-    requeue_failed(tid, failed)
-  end
-
-  def ack(%{tid: tid}, _successful, failed), do: requeue_failed(tid, failed)
-
-  defp requeue_failed(nil, _failed), do: :ok
-
-  defp requeue_failed(tid, failed) do
+  def ack(%{tid: tid}, _successful, failed) do
     failed
     |> Stream.reject(&match?({:failed, :skiped}, &1.status))
     |> Stream.map(& &1.data)

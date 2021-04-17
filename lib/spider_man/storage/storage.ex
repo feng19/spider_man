@@ -10,9 +10,15 @@ defmodule SpiderMan.Storage do
   @optional_callbacks prepare_for_start: 2, prepare_for_stop: 1
 
   def prepare_for_start(options) do
-    options
-    |> Keyword.get(:storage, SpiderMan.Storage.JsonLines)
-    |> prepare_for_start(options)
+    case Keyword.get(options, :batchers, []) do
+      [] ->
+        Keyword.delete(options, :storage)
+
+      _ ->
+        options
+        |> Keyword.get(:storage, SpiderMan.Storage.JsonLines)
+        |> prepare_for_start(options)
+    end
   end
 
   defp prepare_for_start(storage, options) when is_atom(storage) do
