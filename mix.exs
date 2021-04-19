@@ -8,7 +8,8 @@ defmodule SpiderMan.MixProject do
       elixir: "~> 1.11",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      test_coverage: [ignore_modules: cover_ignore_modules()]
     ]
   end
 
@@ -32,6 +33,20 @@ defmodule SpiderMan.MixProject do
       {:logger_file_backend, "~> 0.0.11"},
       {:jason, "~> 1.2", optional: true},
       {:telemetry_metrics, "~> 0.6.0", optional: true}
+    ]
+  end
+
+  defp cover_ignore_modules do
+    [
+      SpiderMan.Requester.JustReturn,
+      SpiderMan.Pipeline.Standard,
+      SpiderMan.Pipeline.Empty,
+      SpiderMan.Pipeline.OnlyCall,
+      SpiderMan.Pipeline.NoCallFunction,
+      SpiderMan.Modules,
+      SpiderManTest,
+      EngineTest,
+      Spider0
     ]
   end
 end

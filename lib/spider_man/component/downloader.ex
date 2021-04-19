@@ -1,4 +1,4 @@
-defmodule SpiderMan.Downloader do
+defmodule SpiderMan.Component.Downloader do
   @moduledoc false
   use SpiderMan.Component.Builder
   require Logger

@@ -1,4 +1,4 @@
-defmodule SpiderMan.Spider do
+defmodule SpiderMan.Component.Spider do
   @moduledoc false
   use SpiderMan.Component.Builder
   require Logger

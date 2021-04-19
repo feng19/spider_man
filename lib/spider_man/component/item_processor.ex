@@ -1,4 +1,4 @@
-defmodule SpiderMan.ItemProcessor do
+defmodule SpiderMan.Component.ItemProcessor do
   @moduledoc false
   use SpiderMan.Component.Builder
   require Logger

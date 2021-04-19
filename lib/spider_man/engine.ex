@@ -2,7 +2,16 @@ defmodule SpiderMan.Engine do
   @moduledoc false
   use GenServer
   require Logger
-  alias SpiderMan.{Downloader, Spider, ItemProcessor, Pipeline, Requester, Storage, Utils}
+
+  alias SpiderMan.{
+    Component.Downloader,
+    Component.Spider,
+    Component.ItemProcessor,
+    Pipeline,
+    Requester,
+    Storage,
+    Utils
+  }
 
   @type state :: map
   @components [:downloader, :spider, :item_processor]
