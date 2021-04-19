@@ -75,8 +75,6 @@ defmodule SpiderMan do
   @doc false
   defmacro __using__(_opts \\ []) do
     quote do
-      use Supervisor
-
       import SpiderMan.Utils,
         only: [
           build_request: 1,
@@ -88,26 +86,6 @@ defmodule SpiderMan do
         ]
 
       @behaviour SpiderMan
-
-      def start_link(options) when is_list(options) do
-        spider = Keyword.fetch!(options, :spider)
-        spider_module = Keyword.fetch!(options, :spider_module)
-        Supervisor.start_link(spider_module, options, name: spider)
-      end
-
-      @impl Supervisor
-      def init(options) do
-        spider = Keyword.fetch!(options, :spider)
-
-        children = [
-          {SpiderMan.Component.Supervisor, spider},
-          {SpiderMan.Engine, options}
-        ]
-
-        Supervisor.init(children, strategy: :one_for_all)
-      end
-
-      defoverridable start_link: 1, init: 1
     end
   end
 
@@ -119,13 +97,6 @@ defmodule SpiderMan do
   defdelegate get_state(spider), to: SpiderMan.Engine
   defdelegate suspend(spider, timeout \\ :infinity), to: SpiderMan.Engine
   defdelegate continue(spider, timeout \\ :infinity), to: SpiderMan.Engine
-
-  def ensure_started(spider, settings \\ []) do
-    with {:ok, _} = return <- start(spider, settings) do
-      wait_until(spider)
-      return
-    end
-  end
 
   def insert_requests(spider, requests) do
     if tid = :persistent_term.get({spider, :downloader_tid}, nil) do
@@ -166,12 +137,5 @@ defmodule SpiderMan do
     end)
   catch
     _, _ -> :ok
-  end
-
-  def wait_until(spider, status \\ :running) do
-    if Engine.status(spider) != status do
-      Process.sleep(100)
-      wait_until(spider, status)
-    end
   end
 end

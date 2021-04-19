@@ -7,7 +7,7 @@ defmodule SpiderMan.SpiderTest do
     spider = SpiderTest
 
     on_exit(fn ->
-      SpiderMan.stop(SpiderTest)
+      SpiderMan.stop(spider)
     end)
 
     [spider: spider]
@@ -30,6 +30,7 @@ defmodule SpiderMan.SpiderTest do
     {:ok, _pid} =
       CommonSpider.start(spider, [handle_response: handle_response],
         status: status,
+        log2file: false,
         downloader_options: [pipelines: pipelines, requester: JustReturn],
         spider_options: [pipelines: pipelines],
         item_processor_options: [
@@ -44,8 +45,6 @@ defmodule SpiderMan.SpiderTest do
           ]
         ]
       )
-
-    SpiderMan.wait_until(spider, status)
 
     assert %{
              status: ^status,
@@ -102,8 +101,7 @@ defmodule SpiderMan.SpiderTest do
       ]
     ]
 
-    {:ok, _pid} =
-      CommonSpider.ensure_started(spider, [handle_response: handle_response], settings)
+    {:ok, _pid} = CommonSpider.start(spider, [handle_response: handle_response], settings)
 
     num_str_list = Enum.map(1..10, &to_string/1)
     requests = Utils.build_requests(num_str_list)
@@ -161,8 +159,7 @@ defmodule SpiderMan.SpiderTest do
       ]
     ]
 
-    {:ok, _pid} =
-      CommonSpider.ensure_started(spider, [handle_response: handle_response], settings)
+    {:ok, _pid} = CommonSpider.start(spider, [handle_response: handle_response], settings)
 
     assert %{
              downloader_pipeline_tid: downloader_pipeline_tid,

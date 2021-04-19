@@ -1,26 +1,32 @@
 defmodule SpiderMan.Engine do
   @moduledoc false
-  use GenServer, shutdown: 60_000
+  use GenServer
   require Logger
   alias SpiderMan.{Downloader, Spider, ItemProcessor, Pipeline, Requester, Storage, Utils}
 
   @type state :: map
   @components [:downloader, :spider, :item_processor]
 
-  def process_name(spider), do: :"#{spider}.Engine"
+  def child_spec(settings) do
+    %{
+      id: Keyword.fetch!(settings, :spider),
+      start: {__MODULE__, :start_link, [settings]},
+      shutdown: 60_000
+    }
+  end
 
   def start_link(options) do
     spider = Keyword.fetch!(options, :spider)
-    GenServer.start_link(__MODULE__, options, name: process_name(spider))
+    GenServer.start_link(__MODULE__, options, name: spider)
   end
 
-  def status(spider), do: call(spider, :status)
-  def get_state(spider), do: spider |> process_name() |> :sys.get_state()
-  def suspend(spider, timeout \\ :infinity), do: call(spider, :suspend, timeout)
+  def status(spider), do: GenServer.call(spider, :status)
+  defdelegate get_state(spider), to: :sys
+  def suspend(spider, timeout \\ :infinity), do: GenServer.call(spider, :suspend, timeout)
   def suspend_component(spider, component, timeout \\ :infinity)
 
   def suspend_component(spider, component, timeout) when component in @components do
-    call(spider, {:suspend_component, component}, timeout)
+    GenServer.call(spider, {:suspend_component, component}, timeout)
   end
 
   def suspend_component(_spider, _component, _timeout), do: :unknown_component
@@ -38,57 +44,36 @@ defmodule SpiderMan.Engine do
   end
 
   def dump2file_force(spider, file_name \\ nil, timeout \\ :infinity) do
-    call(spider, {:dump2file, file_name}, timeout)
+    GenServer.call(spider, {:dump2file, file_name}, timeout)
   end
 
-  def continue(spider, timeout \\ :infinity), do: call(spider, :continue, timeout)
+  def continue(spider, timeout \\ :infinity), do: GenServer.call(spider, :continue, timeout)
   def continue_component(spider, component, timeout \\ :infinity)
 
   def continue_component(spider, component, timeout) when component in @components do
-    call(spider, {:continue_component, component}, timeout)
+    GenServer.call(spider, {:continue_component, component}, timeout)
   end
 
   def continue_component(_spider, _component, _timeout), do: :unknown_component
-
-  defp call(spider, msg, timeout \\ 5_000) do
-    spider
-    |> process_name()
-    |> GenServer.call(msg, timeout)
-  end
 
   @impl true
   def init(options) do
     Process.flag(:trap_exit, true)
     state = Map.new(options)
-    spider = state.spider
+    %{spider: spider, spider_module: spider_module} = state
     log_prefix = "!! spider: #{inspect(spider)},"
     Logger.metadata(spider: spider)
     log_file_path = configure_file_logger(spider, state[:log2file])
     Logger.info("#{log_prefix} configure_file_logger file: #{log_file_path} finish.")
-    Logger.info("#{log_prefix} setup starting with spider_module: #{state.spider_module}.")
-    component_sup = SpiderMan.Component.Supervisor.process_name(spider)
-    continue_status = Map.get(state, :status, :running)
+    Logger.info("#{log_prefix} setup starting with spider_module: #{spider_module}.")
+    status = Map.get(state, :status, :running)
 
     state =
       Map.merge(state, %{
-        status: :preparing,
-        continue_status: continue_status,
-        component_sup: component_sup,
+        status: status,
         log_prefix: log_prefix,
         log_file_path: log_file_path
       })
-
-    {:ok, state, {:continue, :start_components}}
-  end
-
-  @impl true
-  def handle_continue(:start_components, state) do
-    %{
-      spider_module: spider_module,
-      log_prefix: log_prefix,
-      component_sup: component_sup,
-      continue_status: continue_status
-    } = state
 
     is_prepare_for_start? = function_exported?(spider_module, :prepare_for_start, 2)
 
@@ -99,13 +84,8 @@ defmodule SpiderMan.Engine do
         state
       end
 
-    component_sup = wait_component_sup_started(component_sup)
-    Logger.info("#{log_prefix} setup Component.Supervisor finish.")
-
     state =
       state
-      |> Map.merge(%{status: continue_status, component_sup: component_sup})
-      |> Map.delete(:continue_status)
       |> setup_ets_tables()
       |> setup_components()
 
@@ -117,8 +97,8 @@ defmodule SpiderMan.Engine do
       end
 
     Logger.info("#{log_prefix} setup prepare_for_start finish.")
-    Logger.info("#{log_prefix} setup success, status: #{continue_status}.")
-    {:noreply, state}
+    Logger.info("#{log_prefix} setup success, status: #{status}.")
+    {:ok, state}
   end
 
   @impl true
@@ -192,16 +172,23 @@ defmodule SpiderMan.Engine do
   end
 
   @impl true
-  def handle_info({:DOWN, _ref, :process, _pid, :shutdown}, state),
-    do: {:stop, :shutdown, state}
-
-  def handle_info({:DOWN, _ref, :process, pid, reason}, %{component_sup: pid} = state),
-    do: {:stop, {:component_down, reason}, state}
+  def handle_info({:EXIT, supervisor_pid, reason}, %{supervisor_pid: supervisor_pid} = state) do
+    {:stop, reason, state}
+  end
 
   @impl true
   def terminate(reason, state) do
-    # todo: wait all broadway stopped then go continue
-    %{spider_module: spider_module, log_prefix: log_prefix} = state
+    # wait all broadway stopped then go continue
+    %{supervisor_pid: supervisor_pid, spider_module: spider_module, log_prefix: log_prefix} =
+      state
+
+    ref = Process.monitor(supervisor_pid)
+    Process.exit(supervisor_pid, reason_to_signal(reason))
+
+    receive do
+      {:DOWN, ^ref, _, _, _} -> :ok
+    end
+
     level = if reason in [:normal, :shutdown], do: :info, else: :error
     Logger.log(level, "#{log_prefix} terminate by reason: #{inspect(reason)}.")
 
@@ -234,9 +221,11 @@ defmodule SpiderMan.Engine do
 
     Logger.log(level, "#{log_prefix} prepare_for_stop finish.")
     Logger.log(level, "#{log_prefix} Engine stopped.")
-
     :ok
   end
+
+  defp reason_to_signal(:killed), do: :kill
+  defp reason_to_signal(other), do: other
 
   defp prepare_for_start_component(options, component, spider_module) do
     if function_exported?(spider_module, :prepare_for_start_component, 2) do
@@ -331,25 +320,12 @@ defmodule SpiderMan.Engine do
     end
   end
 
-  defp wait_component_sup_started(component_sup) do
-    with pid when pid != nil <- Process.whereis(component_sup),
-         true <- Process.alive?(pid) do
-      Process.monitor(component_sup)
-      pid
-    else
-      _ ->
-        Process.sleep(100)
-        wait_component_sup_started(component_sup)
-    end
-  end
-
   defp setup_components(
          %{
            spider: spider,
            spider_module: spider_module,
            status: status,
            log_prefix: log_prefix,
-           component_sup: component_sup,
            downloader_tid: downloader_tid,
            spider_tid: spider_tid,
            item_processor_tid: item_processor_tid,
@@ -395,15 +371,26 @@ defmodule SpiderMan.Engine do
       |> Storage.prepare_for_start()
       |> prepare_for_start_component(:item_processor, spider_module)
 
-    Logger.info("#{log_prefix} setup prepare_for_start_component finish.")
+    Logger.info("#{log_prefix} setup components prepare_for_start finish.")
 
     # start components
-    [downloader_pid, spider_pid, item_processor_pid] =
-      start_components(component_sup, [
-        {Downloader, downloader_options},
-        {Spider, spider_options},
-        {ItemProcessor, item_processor_options}
-      ])
+    {:ok, supervisor_pid} =
+      Supervisor.start_link(
+        [
+          {Downloader, downloader_options},
+          {Spider, spider_options},
+          {ItemProcessor, item_processor_options}
+        ],
+        strategy: :one_for_one,
+        max_restarts: 0,
+        name: :"#{spider}.Supervisor"
+      )
+
+    [
+      {ItemProcessor, item_processor_pid, :worker, [ItemProcessor]},
+      {Spider, spider_pid, :worker, [Spider]},
+      {Downloader, downloader_pid, :worker, [Downloader]}
+    ] = Supervisor.which_children(supervisor_pid)
 
     Logger.info("#{log_prefix} setup components finish.")
 
@@ -413,22 +400,11 @@ defmodule SpiderMan.Engine do
       spider_options: spider_options,
       item_processor_options: item_processor_options,
       # components
+      supervisor_pid: supervisor_pid,
       downloader_pid: downloader_pid,
       spider_pid: spider_pid,
       item_processor_pid: item_processor_pid
     })
-  end
-
-  defp start_components(_component_sup, []), do: []
-
-  defp start_components(component_sup, [child | children]) do
-    {:ok, pid} = Supervisor.start_child(component_sup, child)
-    [pid | start_components(component_sup, children)]
-  catch
-    # ensure successfully start component when restarting engine
-    :error, {:badmatch, {:error, {{{:badmatch, {:error, {:already_started, _pid}}}, _}, _}}} ->
-      Process.sleep(100)
-      start_components(component_sup, [child | children])
   end
 
   defp get_component_pid(:downloader, %{downloader_pid: pid}), do: pid

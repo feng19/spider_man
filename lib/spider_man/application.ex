@@ -1,7 +1,7 @@
 defmodule SpiderMan.Application do
   @moduledoc false
   use Application
-  alias SpiderMan.Utils
+  alias SpiderMan.{Engine, Utils}
 
   @supervisor SpiderMan.Supervisor
 
@@ -20,9 +20,7 @@ defmodule SpiderMan.Application do
               {spider, settings}
           end
 
-        settings = merge_settings(spider, settings)
-        spider_module = Keyword.fetch!(settings, :spider_module)
-        spider_child_spec(spider, spider_module, settings)
+        {Engine, merge_settings(spider, settings)}
       end)
 
     opts = [strategy: :one_for_one, name: @supervisor]
@@ -31,23 +29,13 @@ defmodule SpiderMan.Application do
 
   def start_child(spider, spider_settings \\ []) do
     settings = merge_settings(spider, spider_settings)
-    spider_module = Keyword.fetch!(settings, :spider_module)
-    child_spec = spider_child_spec(spider, spider_module, settings)
-    Supervisor.start_child(@supervisor, child_spec)
+    Supervisor.start_child(@supervisor, {Engine, settings})
   end
 
   def stop_child(spider) do
     with :ok <- Supervisor.terminate_child(@supervisor, spider) do
       Supervisor.delete_child(@supervisor, spider)
     end
-  end
-
-  defp spider_child_spec(spider, spider_module, settings) do
-    %{
-      id: spider,
-      start: {spider_module, :start_link, [settings]},
-      type: :supervisor
-    }
   end
 
   defp merge_settings(spider, spider_settings) do

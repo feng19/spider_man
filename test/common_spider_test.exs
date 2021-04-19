@@ -22,17 +22,13 @@ defmodule SpiderMan.CommonSpiderTest do
     prepare_for_stop_component = fn _component, _options -> :ok end
     module_str = inspect(CommonSpider)
 
-    # missing callbacks
-    error_msg = "Please defined :callbacks option when use #{module_str}."
-    assert {:error, ^error_msg} = CommonSpider.start_link([])
-
     # wrong callbacks
     error_msg = "Bad type of :callbacks option for #{module_str}, please use Keyword."
-    assert {:error, ^error_msg} = CommonSpider.start_link(callbacks: :wrong_type)
+    assert {:error, ^error_msg} = CommonSpider.start(spider, :wrong_type)
 
     # missing handle_response
     error_msg = "Must defined :handle_response for :callbacks option when use #{module_str}."
-    assert {:error, ^error_msg} = CommonSpider.start_link(callbacks: [])
+    assert {:error, ^error_msg} = CommonSpider.start(spider, [])
 
     # wrong callback - handle_response
     error_msg =
@@ -40,15 +36,14 @@ defmodule SpiderMan.CommonSpiderTest do
         inspect(CommonSpider)
       }, please use fun/2 for this option."
 
-    assert {:error, ^error_msg} =
-             CommonSpider.start_link(callbacks: [handle_response: :wrong_type])
+    assert {:error, ^error_msg} = CommonSpider.start(spider, handle_response: :wrong_type)
 
     error_msg =
       "Wrong type of handle_response: #{inspect(wrong_fun)} defined in :callbacks option when use #{
         inspect(CommonSpider)
       }, please use fun/2 for this option."
 
-    assert {:error, ^error_msg} = CommonSpider.start_link(callbacks: [handle_response: wrong_fun])
+    assert {:error, ^error_msg} = CommonSpider.start(spider, handle_response: wrong_fun)
 
     # wrong callback - prepare_for_start
     test_wrong_callback(:prepare_for_start, 2, spider)
@@ -63,7 +58,7 @@ defmodule SpiderMan.CommonSpiderTest do
     test_wrong_callback(:prepare_for_stop_component, 2, spider)
 
     assert {:ok, _pid} =
-             CommonSpider.ensure_started(spider,
+             CommonSpider.start(spider,
                handle_response: handle_response,
                prepare_for_start: prepare_for_start,
                prepare_for_stop: prepare_for_stop,
@@ -80,7 +75,7 @@ defmodule SpiderMan.CommonSpiderTest do
 
     assert capture_log([level: :warn], fn ->
              {:ok, _pid} =
-               CommonSpider.ensure_started(spider, [
+               CommonSpider.start(spider, [
                  {:handle_response, handle_response},
                  {key, :wrong_type}
                ])
@@ -93,7 +88,7 @@ defmodule SpiderMan.CommonSpiderTest do
 
     assert capture_log([level: :warn], fn ->
              {:ok, _pid} =
-               CommonSpider.ensure_started(spider, [
+               CommonSpider.start(spider, [
                  {:handle_response, handle_response},
                  {key, wrong_fun}
                ])
@@ -110,7 +105,7 @@ defmodule SpiderMan.CommonSpiderTest do
     prepare_for_start_component = fn _component, options -> options end
     prepare_for_stop_component = fn _component, _options -> :ok end
 
-    assert {:ok, _pid} = CommonSpider.ensure_started(spider, handle_response: handle_response)
+    assert {:ok, _pid} = CommonSpider.start(spider, handle_response: handle_response)
     state = SpiderMan.get_state(spider)
     assert false == Keyword.has_key?(state.downloader_options, :prepare_for_start)
     assert false == Keyword.has_key?(state.downloader_options, :prepare_for_stop)
@@ -123,7 +118,7 @@ defmodule SpiderMan.CommonSpiderTest do
     SpiderMan.stop(spider)
 
     assert {:ok, _pid} =
-             CommonSpider.ensure_started(spider,
+             CommonSpider.start(spider,
                handle_response: handle_response,
                prepare_for_start_component: prepare_for_start_component,
                prepare_for_stop_component: prepare_for_stop_component

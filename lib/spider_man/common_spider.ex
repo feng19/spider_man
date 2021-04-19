@@ -3,24 +3,10 @@ defmodule SpiderMan.CommonSpider do
   require Logger
 
   def start(spider, callbacks, settings \\ []) do
-    settings = Keyword.merge(settings, spider_module: __MODULE__, callbacks: callbacks)
-    SpiderMan.start(spider, settings)
-  end
-
-  def ensure_started(spider, callbacks, settings \\ []) do
-    with {:ok, _} = return <- start(spider, callbacks, settings) do
-      SpiderMan.wait_until(spider)
-      return
-    end
-  end
-
-  def start_link(options) do
-    with {callbacks, options} when callbacks != nil <- Keyword.pop(options, :callbacks),
-         true <- Keyword.keyword?(callbacks),
+    with true <- Keyword.keyword?(callbacks),
          {:ok, callbacks} <- check_callbacks(callbacks) do
-      options
-      |> Keyword.put(:callbacks, callbacks)
-      |> super()
+      settings = Keyword.merge(settings, spider_module: __MODULE__, callbacks: callbacks)
+      SpiderMan.start(spider, settings)
     else
       {nil, _} ->
         {:error, "Please defined :callbacks option when use #{inspect(__MODULE__)}."}

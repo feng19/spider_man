@@ -4,7 +4,7 @@ defmodule SpiderMan.EngineTest do
 
   setup_all do
     spider = EngineTest
-    SpiderMan.ensure_started(spider)
+    SpiderMan.start(spider)
 
     on_exit(fn ->
       SpiderMan.stop(spider)
@@ -19,7 +19,7 @@ defmodule SpiderMan.EngineTest do
     # options
     assert %{downloader_options: _, spider_options: _, item_processor_options: _} = state
     # components
-    assert %{component_sup: _, downloader_pid: _, spider_pid: _, item_processor_pid: _} = state
+    assert %{supervisor_pid: _, downloader_pid: _, spider_pid: _, item_processor_pid: _} = state
     # ets tables
     assert %{
              downloader_tid: _,
@@ -35,12 +35,12 @@ defmodule SpiderMan.EngineTest do
   test "check spider_module", %{spider: spider} do
     on_exit(fn ->
       SpiderMan.stop(spider)
-      SpiderMan.ensure_started(spider)
+      SpiderMan.start(spider)
     end)
 
     SpiderMan.stop(spider)
 
-    CommonSpider.ensure_started(spider, [
+    CommonSpider.start(spider, [
       {:handle_response, empty_handle_response_fun()}
     ])
 
@@ -125,7 +125,7 @@ defmodule SpiderMan.EngineTest do
 
       on_exit(fn ->
         SpiderMan.stop(spider)
-        {:ok, _} = SpiderMan.ensure_started(spider)
+        {:ok, _} = SpiderMan.start(spider)
       end)
     end
 
@@ -152,7 +152,7 @@ defmodule SpiderMan.EngineTest do
     end
 
     defp setup_callback(spider, key, fun) do
-      CommonSpider.ensure_started(spider, [
+      CommonSpider.start(spider, [
         {:handle_response, empty_handle_response_fun()},
         {key, fun}
       ])
@@ -212,7 +212,6 @@ defmodule SpiderMan.EngineTest do
     :ok = SpiderMan.stop(spider)
     status = :suspended
     assert {:ok, _} = SpiderMan.start(spider, status: status)
-    SpiderMan.wait_until(spider, status)
 
     assert %{
              status: ^status,
@@ -293,7 +292,7 @@ defmodule SpiderMan.EngineTest do
 
     test "setup_ets_tables - load_from_file", %{spider: spider, file_name: file_name} do
       :ok = SpiderMan.stop(spider)
-      assert {:ok, _} = SpiderMan.ensure_started(spider, load_from_file: file_name)
+      assert {:ok, _} = SpiderMan.start(spider, load_from_file: file_name)
       Process.sleep(500)
       check_ets_tables(spider, 0, 1)
     end
@@ -301,19 +300,18 @@ defmodule SpiderMan.EngineTest do
     test "setup_ets_tables - suspended - load_from_file", %{spider: spider, file_name: file_name} do
       :ok = SpiderMan.stop(spider)
       assert {:ok, _} = SpiderMan.start(spider, load_from_file: file_name, status: :suspended)
-      SpiderMan.wait_until(spider, :suspended)
-      Process.sleep(500)
       check_ets_tables(spider, 1, 1)
 
-      %{
-        downloader_tid: downloader_tid,
-        spider_tid: spider_tid,
-        item_processor_tid: item_processor_tid,
-        common_pipeline_tid: common_pipeline_tid,
-        downloader_pipeline_tid: downloader_pipeline_tid,
-        spider_pipeline_tid: spider_pipeline_tid,
-        item_processor_pipeline_tid: item_processor_pipeline_tid
-      } = SpiderMan.get_state(spider)
+      assert %{
+               status: :suspended,
+               downloader_tid: downloader_tid,
+               spider_tid: spider_tid,
+               item_processor_tid: item_processor_tid,
+               common_pipeline_tid: common_pipeline_tid,
+               downloader_pipeline_tid: downloader_pipeline_tid,
+               spider_pipeline_tid: spider_pipeline_tid,
+               item_processor_pipeline_tid: item_processor_pipeline_tid
+             } = SpiderMan.get_state(spider)
 
       assert %Request{key: 1, url: 1} = :ets.lookup_element(downloader_tid, 1, 2)
       assert %Response{key: 1, env: %Tesla.Env{url: 1}} = :ets.lookup_element(spider_tid, 1, 2)
