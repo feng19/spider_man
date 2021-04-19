@@ -169,16 +169,20 @@ defmodule SpiderMan.SpiderTest do
 
     requests = 1..10000 |> Enum.map(&{&1, 1}) |> Utils.build_requests()
     assert SpiderMan.insert_requests(spider, requests)
-    Process.sleep(5_500)
-    SpiderMan.suspend(spider)
-    Process.sleep(500)
-
-    IO.inspect(
-      downloader: :ets.lookup_element(downloader_pipeline_tid, Pipeline.Counter, 2),
-      spider: :ets.lookup_element(spider_pipeline_tid, Pipeline.Counter, 2),
-      item_processor: :ets.lookup_element(item_processor_pipeline_tid, Pipeline.Counter, 2)
-    )
+    total = 500_000
+    wait_until_count(downloader_pipeline_tid, total)
+    wait_until_count(spider_pipeline_tid, total)
+    wait_until_count(item_processor_pipeline_tid, total)
 
     SpiderMan.stop(spider)
+  end
+
+  defp wait_until_count(tid, count) do
+    if :ets.lookup_element(tid, Pipeline.Counter, 2) < count do
+      Process.sleep(100)
+      wait_until_count(tid, count)
+    else
+      :ok
+    end
   end
 end
