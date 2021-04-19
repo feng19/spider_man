@@ -14,14 +14,14 @@ defmodule SpiderMan.Downloader do
     end
 
     case Pipeline.call(context.pipelines, data, spider) do
-      %{url: url, options: options} ->
+      %{key: key, url: url, options: options} ->
         requester = context.requester
 
         case requester.request(url, options, context) do
           {:ok, env} ->
             # push successful events to next_tid
             Utils.push_events_to_next_producer_ets(context.next_tid, context.tid, [
-              %Response{key: url, env: env}
+              %Response{key: key, env: env}
             ])
 
             %{message | data: :ok}

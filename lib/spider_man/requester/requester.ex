@@ -32,8 +32,7 @@ defmodule SpiderMan.Requester do
       {:error, _} -> raise "Requester module: #{inspect(requester)} undefined."
       false -> options
     end
-
-    Keyword.put(options, :requester, requester)
+    |> Keyword.put(:requester, requester)
   end
 
   def prepare_for_stop(options) do

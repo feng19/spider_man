@@ -32,7 +32,7 @@ SpiderMan.Modules.create_spider(EngineTest)
 
 defmodule Spider0 do
   use SpiderMan
-  alias SpiderMan.{Requester.JustReturn, Response, Utils}
+  alias SpiderMan.{Requester, Response, Utils}
   alias SpiderMan.Pipeline.{SetCookie, DuplicateFilter}
 
   @impl true
@@ -42,7 +42,7 @@ defmodule Spider0 do
         # context: %{debug: true},
         pipelines: [DuplicateFilter, SetCookie],
         requester:
-          {JustReturn,
+          {Requester.Finch,
            [
              logging?: true,
              base_url: "https://www.example.com"

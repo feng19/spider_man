@@ -41,6 +41,7 @@ defmodule SpiderMan.Requester.DynamicFinch do
 
   @impl true
   def prepare_for_start(finch_options, downloader_options) do
+    finch_options = finch_options || []
     spider = Keyword.fetch!(downloader_options, :spider)
 
     finch_options =
