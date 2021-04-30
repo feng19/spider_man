@@ -9,22 +9,29 @@ defmodule SpiderMan do
   defmodule Request do
     @moduledoc false
     @enforce_keys [:key, :url]
-    defstruct [:key, :url, options: [], retries: 0]
-    @type t :: %__MODULE__{key: term, url: binary, options: keyword, retries: integer}
+    defstruct [:key, :url, :flag, options: [], retries: 0]
+    @type t :: %__MODULE__{key: term, url: binary, options: keyword, retries: integer, flag: any}
   end
 
   defmodule Response do
     @moduledoc false
     @enforce_keys [:key, :env]
-    defstruct [:key, :env, options: [], retries: 0]
-    @type t :: %__MODULE__{key: term, env: Tesla.Env.t(), options: keyword, retries: integer}
+    defstruct [:key, :env, :flag, options: [], retries: 0]
+
+    @type t :: %__MODULE__{
+            key: term,
+            env: Tesla.Env.t(),
+            options: keyword,
+            retries: integer,
+            flag: any
+          }
   end
 
   defmodule Item do
     @moduledoc false
     @enforce_keys [:key, :value]
-    defstruct [:key, :value, options: [], retries: 0]
-    @type t :: %__MODULE__{key: term, value: term, options: keyword, retries: integer}
+    defstruct [:key, :value, :flag, options: [], retries: 0]
+    @type t :: %__MODULE__{key: term, value: term, options: keyword, retries: integer, flag: any}
   end
 
   @type component :: :downloader | :spider | :item_processor
@@ -97,6 +104,9 @@ defmodule SpiderMan do
   defdelegate get_state(spider), to: SpiderMan.Engine
   defdelegate suspend(spider, timeout \\ :infinity), to: SpiderMan.Engine
   defdelegate continue(spider, timeout \\ :infinity), to: SpiderMan.Engine
+
+  def insert_request(spider, request) when is_struct(request, Request),
+    do: insert_requests(spider, [request])
 
   def insert_requests(spider, requests) do
     if tid = :persistent_term.get({spider, :downloader_tid}, nil) do

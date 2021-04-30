@@ -1,7 +1,7 @@
 defmodule SpiderMan.CommonSpiderTest do
   use ExUnit.Case, async: true
   import ExUnit.CaptureLog
-  alias SpiderMan.{CommonSpider, Item}
+  alias SpiderMan.{CommonSpider, Item, Requester, Utils}
 
   setup_all do
     spider = CommonSpiderTest
@@ -144,5 +144,26 @@ defmodule SpiderMan.CommonSpiderTest do
 
     assert %{items: [%Item{key: ^test, value: ^context}]} =
              CommonSpider.handle_response(%Tesla.Env{url: test}, context)
+  end
+
+  test "flag transmit", %{spider: spider} do
+    SpiderMan.stop(spider)
+    parent = self()
+
+    handle_response = fn %{key: key, flag: flag} = _response, _context ->
+      send(parent, {:flag, flag})
+      item = Utils.build_item(key, 1)
+      %{items: [%{item | flag: flag}]}
+    end
+
+    assert {:ok, _pid} =
+             CommonSpider.start(spider, [handle_response: handle_response],
+               downloader_options: [requester: Requester.JustReturn]
+             )
+
+    flag = 1
+    request = Utils.build_request("test")
+    SpiderMan.insert_request(spider, %{request | flag: flag})
+    assert_receive {:flag, ^flag}, 1000
   end
 end
