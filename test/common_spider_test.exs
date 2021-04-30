@@ -150,10 +150,16 @@ defmodule SpiderMan.CommonSpiderTest do
     SpiderMan.stop(spider)
     parent = self()
 
-    handle_response = fn %{key: key, flag: flag} = _response, _context ->
-      send(parent, {:flag, flag})
-      item = Utils.build_item(key, 1)
-      %{items: [%{item | flag: flag}]}
+    handle_response = fn
+      %{flag: 2}, _context ->
+        send(parent, :over)
+        %{}
+
+      %{key: key, flag: flag}, _context ->
+        send(parent, {:flag, flag})
+        request = Utils.build_request("over")
+        item = Utils.build_item(key, 1)
+        %{requests: [%{request | flag: flag + 1}], items: [%{item | flag: flag}]}
     end
 
     assert {:ok, _pid} =
@@ -165,5 +171,6 @@ defmodule SpiderMan.CommonSpiderTest do
     request = Utils.build_request("test")
     SpiderMan.insert_request(spider, %{request | flag: flag})
     assert_receive {:flag, ^flag}, 1000
+    assert_receive :over, 1000
   end
 end
