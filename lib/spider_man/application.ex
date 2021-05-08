@@ -1,14 +1,15 @@
 defmodule SpiderMan.Application do
   @moduledoc false
   use Application
-  alias SpiderMan.{Engine, Utils}
+  alias SpiderMan.{Engine, Configuration}
 
+  @app :spider_man
   @supervisor SpiderMan.Supervisor
 
   @impl true
   def start(_type, _args) do
     children =
-      Application.get_env(:spider_man, :spiders, [])
+      Application.get_env(@app, :spiders, [])
       |> Enum.map(fn spider ->
         {spider, settings} =
           case spider do
@@ -16,11 +17,11 @@ defmodule SpiderMan.Application do
               {spider, settings}
 
             spider when is_atom(spider) ->
-              settings = Application.get_env(:spider_man, spider, [])
+              settings = Application.get_env(@app, spider, [])
               {spider, settings}
           end
 
-        {Engine, merge_settings(spider, settings)}
+        {Engine, Configuration.validate_settings!(spider, settings)}
       end)
 
     opts = [strategy: :one_for_one, name: @supervisor]
@@ -28,7 +29,7 @@ defmodule SpiderMan.Application do
   end
 
   def start_child(spider, spider_settings \\ []) do
-    settings = merge_settings(spider, spider_settings)
+    settings = Configuration.validate_settings!(spider, spider_settings)
     Supervisor.start_child(@supervisor, {Engine, settings})
   end
 
@@ -36,28 +37,5 @@ defmodule SpiderMan.Application do
     with :ok <- Supervisor.terminate_child(@supervisor, spider) do
       Supervisor.delete_child(@supervisor, spider)
     end
-  end
-
-  defp merge_settings(spider, spider_settings) do
-    default_settings = SpiderMan.default_settings()
-    global_settings = Application.get_env(:spider_man, :global_settings, [])
-    settings = Utils.merge_settings(default_settings, global_settings)
-
-    spider_module =
-      Keyword.get_lazy(spider_settings, :spider_module, fn ->
-        Keyword.get(settings, :spider_module, spider)
-      end)
-
-    settings =
-      with {:module, _} <- Code.ensure_loaded(spider_module),
-           true <- function_exported?(spider_module, :settings, 0) do
-        Utils.merge_settings(settings, spider_module.settings())
-      else
-        {:error, _} -> raise "Spider module: #{inspect(spider_module)} undefined!"
-        false -> settings
-      end
-      |> Utils.merge_settings(spider_settings)
-
-    Keyword.merge(settings, spider: spider, spider_module: spider_module)
   end
 end

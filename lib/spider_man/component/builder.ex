@@ -43,27 +43,27 @@ defmodule SpiderMan.Component.Builder do
     options = Map.new(options)
     spider = options.spider
     options = Map.merge(%{next_tid: nil, pipelines: [], additional_specs: []}, options)
-    {pipelines, opts} = Pipeline.prepare_for_start(options.pipelines, options)
-    opts = Map.put(opts, :pipelines, pipelines)
+    {pipelines, options} = Pipeline.prepare_for_start(options.pipelines, options)
+    options = Map.put(options, :pipelines, pipelines)
 
     Logger.info(
       "!! spider: #{inspect(spider)}, component: #{inspect(component)} pipelines setup prepare_for_start finish."
     )
 
     ets_producer_options =
-      opts
+      options
       |> Map.take([:tid, :additional_specs, :status, :buffer_size, :buffer_keep, :retry_interval])
       |> Map.to_list()
 
-    processor = Map.get(opts, :processor, [])
+    processor = Map.get(options, :processor, [])
 
     producer = [
       module: {SpiderMan.Producer.ETS, ets_producer_options},
-      transformer: {__MODULE__, :transform, [Map.take(opts, [:tid, :next_tid])]}
+      transformer: {__MODULE__, :transform, [Map.take(options, [:tid, :next_tid])]}
     ]
 
     producer =
-      case Map.get(opts, :rate_limiting) do
+      case Map.get(options, :rate_limiting) do
         rate_limiting when is_list(rate_limiting) ->
           [{:rate_limiting, rate_limiting} | producer]
 
@@ -72,15 +72,15 @@ defmodule SpiderMan.Component.Builder do
       end
 
     context =
-      opts
+      options
       |> Map.get(:context, %{})
-      |> Map.merge(Map.take(opts, [:tid, :next_tid, :spider, :spider_module, :pipelines]))
+      |> Map.merge(Map.take(options, [:tid, :next_tid, :spider, :spider_module, :pipelines]))
 
     [
       name: process_name(spider, component),
       producer: producer,
       processors: [default: processor],
-      batchers: Map.get(opts, :batchers, []),
+      batchers: Map.get(options, :batchers, []),
       context: context
     ]
   end

@@ -54,25 +54,32 @@ defmodule SpiderMan.SpiderTest do
              common_pipeline_tid: common_pipeline_tid
            } = SpiderMan.get_state(spider)
 
-    # downloader -> requester -> spider -> item_processor -> storage
+    # whole flow: downloader -> requester -> spider -> item_processor -> storage
+
+    # insert a request
     assert 0 = :ets.lookup_element(common_pipeline_tid, Pipeline.Counter, 2)
     request = Utils.build_request(key)
-    assert SpiderMan.insert_requests(spider, [request])
+    assert SpiderMan.insert_request(spider, request)
+
+    # continue downloader
     assert :ok = Engine.continue_component(spider, :downloader)
     assert :running = Utils.producer_status(downloader_pid)
     Process.sleep(100)
     assert 1 = :ets.lookup_element(common_pipeline_tid, Pipeline.Counter, 2)
+
+    # continue spider
     assert :ok = Engine.continue_component(spider, :spider)
     assert :running = Utils.producer_status(spider_pid)
     Process.sleep(100)
     assert 2 = :ets.lookup_element(common_pipeline_tid, Pipeline.Counter, 2)
 
+    # continue item_processor and capture storage log
     assert capture_log([level: :info], fn ->
              assert :ok = Engine.continue_component(spider, :item_processor)
              assert :running = Utils.producer_status(item_processor_pid)
              Process.sleep(100)
              assert 3 = :ets.lookup_element(common_pipeline_tid, Pipeline.Counter, 2)
-           end) =~ "value: \"test\""
+           end) =~ ">> store item:"
   end
 
   @tag :tmp_dir

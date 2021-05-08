@@ -290,16 +290,19 @@ defmodule SpiderMan.EngineTest do
       assert Enum.all?(suffix_of_tables, &File.exists?("#{file_name}_#{&1}.ets"))
     end
 
-    test "setup_ets_tables - load_from_file", %{spider: spider, file_name: file_name} do
+    test "setup_ets_tables - setup_ets_from_file", %{spider: spider, file_name: file_name} do
       :ok = SpiderMan.stop(spider)
-      assert {:ok, _} = SpiderMan.start(spider, load_from_file: file_name)
+      assert {:ok, _} = SpiderMan.start(spider, ets_file: file_name)
       Process.sleep(500)
       check_ets_tables(spider, 0, 1)
     end
 
-    test "setup_ets_tables - suspended - load_from_file", %{spider: spider, file_name: file_name} do
+    test "setup_ets_tables - suspended - setup_ets_from_file", %{
+      spider: spider,
+      file_name: file_name
+    } do
       :ok = SpiderMan.stop(spider)
-      assert {:ok, _} = SpiderMan.start(spider, load_from_file: file_name, status: :suspended)
+      assert {:ok, _} = SpiderMan.start(spider, ets_file: file_name, status: :suspended)
       check_ets_tables(spider, 1, 1)
 
       assert %{

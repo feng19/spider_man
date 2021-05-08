@@ -5,6 +5,7 @@ defmodule SpiderMan.Pipeline.Splash do
   @impl true
   def call(event, {api_url, query}) do
     options = event.options
+
     url =
       options
       |> Keyword.get(:query, [])

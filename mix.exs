@@ -31,6 +31,7 @@ defmodule SpiderMan.MixProject do
       {:tesla, "~> 1.4"},
       {:finch, "~> 0.6"},
       {:logger_file_backend, "~> 0.0.11"},
+      {:nimble_options, "~> 0.3"},
       {:jason, "~> 1.2", optional: true},
       {:telemetry_metrics, "~> 0.6.0", optional: true}
     ]

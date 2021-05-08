@@ -2,41 +2,18 @@ defmodule SpiderMan do
   @moduledoc """
   Documentation for `SpiderMan`.
   """
-  alias SpiderMan.{Engine, Storage, Pipeline.DuplicateFilter}
+  alias SpiderMan.{Engine, Configuration, Request, Response, Item}
+
+  @type spider :: module | atom
+  @type settings :: keyword
+  @type status :: :running | :suspended
+  @type request :: Request.t()
+  @type requests :: [request]
+  @type component :: :downloader | :spider | :item_processor
+  @type component_stats :: [size: pos_integer, memory: pos_integer] | nil
+  @type prepare_for_start_stage :: :pre | :post
 
   @components [:downloader, :spider, :item_processor]
-
-  defmodule Request do
-    @moduledoc false
-    @enforce_keys [:key, :url]
-    defstruct [:key, :url, :flag, options: [], retries: 0]
-    @type t :: %__MODULE__{key: term, url: binary, options: keyword, retries: integer, flag: any}
-  end
-
-  defmodule Response do
-    @moduledoc false
-    @enforce_keys [:key, :env]
-    defstruct [:key, :env, :flag, options: [], retries: 0]
-
-    @type t :: %__MODULE__{
-            key: term,
-            env: Tesla.Env.t(),
-            options: keyword,
-            retries: integer,
-            flag: any
-          }
-  end
-
-  defmodule Item do
-    @moduledoc false
-    @enforce_keys [:key, :value]
-    defstruct [:key, :value, :flag, options: [], retries: 0]
-    @type t :: %__MODULE__{key: term, value: term, options: keyword, retries: integer, flag: any}
-  end
-
-  @type component :: :downloader | :spider | :item_processor
-  @type settings :: keyword
-  @type prepare_for_start_stage :: :pre | :post
 
   @callback handle_response(Response.t(), context :: map) :: %{
               optional(:requests) => [Request.t()],
@@ -52,32 +29,6 @@ defmodule SpiderMan do
                       prepare_for_stop: 1,
                       prepare_for_start_component: 2,
                       prepare_for_stop_component: 2
-
-  @default_settings [
-    downloader_options: [
-      pipelines: [DuplicateFilter],
-      processor: [max_demand: 1],
-      rate_limiting: [allowed_messages: 10, interval: 1000],
-      context: %{}
-    ],
-    spider_options: [
-      pipelines: [],
-      processor: [max_demand: 1],
-      context: %{}
-    ],
-    item_processor_options: [
-      pipelines: [DuplicateFilter],
-      storage: Storage.JsonLines,
-      context: %{},
-      batchers: [
-        default: [
-          concurrency: 1,
-          batch_size: 50,
-          batch_timeout: 1000
-        ]
-      ]
-    ]
-  ]
 
   @doc false
   defmacro __using__(_opts \\ []) do
@@ -96,18 +47,42 @@ defmodule SpiderMan do
     end
   end
 
-  def default_settings, do: @default_settings
+  @doc """
+  start a spider
 
+  ## Settings
+  #{Configuration.configuration_docs()}
+  """
+  @spec start(spider, settings) :: Supervisor.on_start_child()
   defdelegate start(spider, settings \\ []), to: SpiderMan.Application, as: :start_child
-  defdelegate stop(spider), to: SpiderMan.Application, as: :stop_child
-  defdelegate status(spider), to: SpiderMan.Engine
-  defdelegate get_state(spider), to: SpiderMan.Engine
-  defdelegate suspend(spider, timeout \\ :infinity), to: SpiderMan.Engine
-  defdelegate continue(spider, timeout \\ :infinity), to: SpiderMan.Engine
 
+  @doc "stop a spider"
+  @spec stop(spider) :: :ok | {:error, error} when error: :not_found | :running | :restarting
+  defdelegate stop(spider), to: SpiderMan.Application, as: :stop_child
+
+  @doc "fetch spider's status"
+  @spec status(spider) :: status
+  defdelegate status(spider), to: Engine
+
+  @doc "fetch spider's state"
+  @spec get_state(spider) :: Engine.state()
+  defdelegate get_state(spider), to: Engine
+
+  @doc "suspend a spider"
+  @spec suspend(spider, timeout) :: :ok
+  defdelegate suspend(spider, timeout \\ :infinity), to: Engine
+
+  @doc "continue a spider"
+  @spec continue(spider, timeout) :: :ok
+  defdelegate continue(spider, timeout \\ :infinity), to: Engine
+
+  @doc "insert a request to spider"
+  @spec insert_request(spider, request) :: true | nil
   def insert_request(spider, request) when is_struct(request, Request),
     do: insert_requests(spider, [request])
 
+  @doc "insert multiple requests to spider"
+  @spec insert_requests(spider, requests) :: true | nil
   def insert_requests(spider, requests) do
     if tid = :persistent_term.get({spider, :downloader_tid}, nil) do
       objects = Enum.map(requests, &{&1.key, &1})
@@ -115,29 +90,42 @@ defmodule SpiderMan do
     end
   end
 
+  @doc "fetch spider's statistics"
+  @spec stats(spider) :: [
+          status: status,
+          downloader: component_stats,
+          spider: component_stats,
+          item_processor: component_stats
+        ]
   def stats(spider) do
     components = Enum.map(@components, &{&1, stats(spider, &1)})
     [{:status, Engine.status(spider)} | components]
   end
 
+  @doc "fetch component's statistics"
+  @spec stats(spider, component) :: component_stats
   def stats(spider, component) do
     if tid = :persistent_term.get({spider, :"#{component}_tid"}, nil) do
       tid |> :ets.info() |> Keyword.take([:size, :memory])
     end
   end
 
+  @doc "list spiders where already started"
+  @spec list_spiders :: [spider]
   def list_spiders do
     SpiderMan.Supervisor
     |> Supervisor.which_children()
     |> Enum.map(&elem(&1, 0))
   end
 
+  @doc false
   def periodic_measurements() do
     Enum.each(list_spiders(), &telemetry_execute(&1))
   catch
     _, _ -> :ok
   end
 
+  @doc false
   def telemetry_execute(spider) do
     name = inspect(spider)
 

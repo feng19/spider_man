@@ -267,8 +267,8 @@ defmodule SpiderMan.Engine do
     state
   end
 
-  defp do_setup_ets_tables(%{load_from_file: file_name, log_prefix: log_prefix} = state) do
-    Logger.info("#{log_prefix} starting load_from_file: #{file_name}_*.ets ...")
+  defp do_setup_ets_tables(%{ets_file: file_name, log_prefix: log_prefix} = state) do
+    Logger.info("#{log_prefix} starting setup_ets_from_file: #{file_name}_*.ets ...")
 
     ets_tables =
       Map.new(
@@ -282,12 +282,12 @@ defmodule SpiderMan.Engine do
           item_processor_pipeline_tid: "item_processor_pipeline"
         ],
         fn {key, file_suffix} ->
-          tid = do_load_from_file!("#{file_name}_#{file_suffix}.ets", log_prefix)
+          tid = setup_ets_from_file!("#{file_name}_#{file_suffix}.ets", log_prefix)
           {key, tid}
         end
       )
 
-    Logger.info("#{log_prefix} load_from_file: #{file_name}_*.ets finished.")
+    Logger.info("#{log_prefix} setup_ets_from_file: #{file_name}_*.ets finished.")
 
     Map.merge(state, ets_tables)
   end
@@ -317,7 +317,7 @@ defmodule SpiderMan.Engine do
     Logger.notice("dump2file: #{file_name} finished, result: #{inspect(result)}.")
   end
 
-  defp do_load_from_file!(file_name, log_prefix) do
+  defp setup_ets_from_file!(file_name, log_prefix) do
     Logger.info("#{log_prefix} loading from file: #{file_name} ...")
 
     file_name
@@ -325,7 +325,7 @@ defmodule SpiderMan.Engine do
     |> :ets.file2tab(verify: true)
     |> case do
       {:ok, tid} -> tid
-      {:error, error} -> raise "load_from_file: #{file_name} error: #{inspect(error)}"
+      {:error, error} -> raise "setup_ets_from_file: #{file_name} error: #{inspect(error)}"
     end
   end
 
