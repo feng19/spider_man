@@ -42,4 +42,47 @@ defmodule SpiderMan.Requester do
       requester.prepare_for_stop(options)
     end
   end
+
+  def append_default_middlewares(false, requester_options), do: requester_options[:middlewares]
+
+  def append_default_middlewares(true, requester_options) do
+    middlewares =
+      if base_url = requester_options[:base_url] do
+        [{Tesla.Middleware.BaseUrl, base_url} | requester_options[:middlewares]]
+      else
+        requester_options[:middlewares]
+      end
+
+    middlewares =
+      if requester_options[:logging?] do
+        middlewares ++ [Tesla.Middleware.Logger]
+      else
+        middlewares
+      end
+
+    if not_found_middleware?(middlewares, Tesla.Middleware.Retry) do
+      retry_options = [
+        delay: 500,
+        max_retries: 3,
+        max_delay: 4_000,
+        should_retry: fn
+          {:ok, %{status: status}} when status in [400, 500] -> true
+          {:ok, _} -> false
+          {:error, _} -> true
+        end
+      ]
+
+      [{Tesla.Middleware.Retry, retry_options} | middlewares]
+    else
+      middlewares
+    end
+  end
+
+  defp not_found_middleware?(middlewares, middleware) do
+    Enum.all?(middlewares, fn
+      {^middleware, _} -> false
+      ^middleware -> false
+      _ -> true
+    end)
+  end
 end

@@ -1,6 +1,8 @@
 defmodule SpiderMan.Requester.DynamicFinch do
   @moduledoc false
-  @behaviour SpiderMan.Requester
+  alias SpiderMan.Requester
+  alias SpiderMan.Requester.Finch, as: RequesterFinch
+  @behaviour Requester
 
   def child_spec(init_arg) do
     %{
@@ -31,7 +33,6 @@ defmodule SpiderMan.Requester.DynamicFinch do
   @impl true
   def request(url, options, %{spider: spider, tid: tid, middlewares: middlewares}) do
     setting = get_requester_settings(tid, spider)
-
     options = Keyword.merge(setting.request_options, options)
 
     middlewares
@@ -45,19 +46,12 @@ defmodule SpiderMan.Requester.DynamicFinch do
     spider = Keyword.fetch!(downloader_options, :spider)
 
     finch_options =
-      [
-        spec_options: [pools: %{:default => [size: 32, count: 8]}],
-        adapter_options: [pool_timeout: 5_000],
-        request_options: [receive_timeout: 10_000],
-        append_default_middlewares?: true,
-        middlewares: [],
-        logging?: false
-      ]
+      RequesterFinch.default_options()
       |> Keyword.merge(finch_options)
-      |> SpiderMan.Requester.Finch.handle_proxy_option()
+      |> RequesterFinch.handle_proxy_option()
 
     middlewares =
-      SpiderMan.Requester.Finch.append_default_middlewares(
+      Requester.append_default_middlewares(
         finch_options[:append_default_middlewares?],
         finch_options
       )

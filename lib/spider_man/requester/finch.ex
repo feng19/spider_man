@@ -1,7 +1,16 @@
 defmodule SpiderMan.Requester.Finch do
   @moduledoc false
-  alias Tesla.Middleware.{BaseUrl, Retry}
-  @behaviour SpiderMan.Requester
+  alias SpiderMan.Requester
+  @behaviour Requester
+
+  @default_options [
+    spec_options: [pools: %{:default => [size: 32, count: 8]}],
+    adapter_options: [pool_timeout: 5_000],
+    request_options: [receive_timeout: 10_000],
+    append_default_middlewares?: true,
+    middlewares: [],
+    logging?: false
+  ]
 
   @impl true
   def request(url, options, context) do
@@ -19,14 +28,7 @@ defmodule SpiderMan.Requester.Finch do
     finch_name = :"#{spider}.Finch"
 
     finch_options =
-      [
-        spec_options: [pools: %{:default => [size: 32, count: 8]}],
-        adapter_options: [pool_timeout: 5_000],
-        request_options: [receive_timeout: 10_000],
-        append_default_middlewares?: true,
-        middlewares: [],
-        logging?: false
-      ]
+      @default_options
       |> Keyword.merge(finch_options)
       |> handle_proxy_option()
 
@@ -35,7 +37,10 @@ defmodule SpiderMan.Requester.Finch do
     adapter_options = [{:name, finch_name} | finch_options[:adapter_options]]
 
     middlewares =
-      append_default_middlewares(finch_options[:append_default_middlewares?], finch_options)
+      Requester.append_default_middlewares(
+        finch_options[:append_default_middlewares?],
+        finch_options
+      )
 
     context = %{adapter_options: adapter_options, middlewares: middlewares}
 
@@ -51,6 +56,8 @@ defmodule SpiderMan.Requester.Finch do
       end
     )
   end
+
+  def default_options, do: @default_options
 
   def handle_proxy_option(finch_options) do
     case Keyword.get(finch_options, :proxy) do
@@ -90,48 +97,5 @@ defmodule SpiderMan.Requester.Finch do
         spec_options = Keyword.put(spec_options, :pools, pools)
         Keyword.put(finch_options, :spec_options, spec_options)
     end
-  end
-
-  def append_default_middlewares(false, finch_options), do: finch_options[:middlewares]
-
-  def append_default_middlewares(true, finch_options) do
-    middlewares =
-      if base_url = finch_options[:base_url] do
-        [{BaseUrl, base_url} | finch_options[:middlewares]]
-      else
-        finch_options[:middlewares]
-      end
-
-    middlewares =
-      if finch_options[:logging?] do
-        middlewares ++ [Tesla.Middleware.Logger]
-      else
-        middlewares
-      end
-
-    if not_found_middleware?(middlewares, Retry) do
-      retry_options = [
-        delay: 500,
-        max_retries: 3,
-        max_delay: 4_000,
-        should_retry: fn
-          {:ok, %{status: status}} when status in [400, 500] -> true
-          {:ok, _} -> false
-          {:error, _} -> true
-        end
-      ]
-
-      [{Retry, retry_options} | middlewares]
-    else
-      middlewares
-    end
-  end
-
-  defp not_found_middleware?(middlewares, middleware) do
-    Enum.all?(middlewares, fn
-      {^middleware, _} -> false
-      ^middleware -> false
-      _ -> true
-    end)
   end
 end
