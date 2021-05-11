@@ -53,7 +53,7 @@ defmodule SpiderMan.CommonSpider do
   end
 
   @impl true
-  def prepare_for_start_component(component, options) do
+  def prepare_for_start_component(component, options) when is_list(options) do
     if callback = Keyword.get(options, :prepare_for_start) do
       callback.(component, options)
     else
@@ -61,12 +61,16 @@ defmodule SpiderMan.CommonSpider do
     end
   end
 
+  def prepare_for_start_component(_component, options), do: options
+
   @impl true
-  def prepare_for_stop_component(component, options) do
+  def prepare_for_stop_component(component, options) when is_list(options) do
     if callback = Keyword.get(options, :prepare_for_stop) do
       callback.(component, options)
     end
   end
+
+  def prepare_for_stop_component(_component, options), do: options
 
   @impl true
   def prepare_for_stop(state) do

@@ -37,8 +37,9 @@ defmodule SpiderMan do
   @callback init(state) :: state when state: Engine.state()
   @callback prepare_for_start(prepare_for_start_stage, state) :: state when state: Engine.state()
   @callback prepare_for_stop(Engine.state()) :: :ok
-  @callback prepare_for_start_component(component, options) :: options when options: keyword
-  @callback prepare_for_stop_component(component, options :: keyword) :: :ok
+  @callback prepare_for_start_component(component, options | false) :: options
+            when options: keyword
+  @callback prepare_for_stop_component(component, options :: keyword | false) :: :ok
   @optional_callbacks settings: 0,
                       init: 1,
                       prepare_for_start: 2,
@@ -54,11 +55,17 @@ defmodule SpiderMan do
           build_request: 1,
           build_request: 2,
           build_request: 3,
+          build_requests: 1,
+          build_requests: 2,
+          build_requests: 3,
           build_item: 2,
           build_item: 3,
           build_item: 4,
+          set_key: 2,
           set_flag: 2
         ]
+
+      import SpiderMan, only: [insert_request: 2, insert_requests: 2]
 
       @behaviour SpiderMan
     end

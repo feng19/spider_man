@@ -10,14 +10,20 @@ defmodule SpiderMan.Storage do
   @optional_callbacks prepare_for_start: 2, prepare_for_stop: 1
 
   def prepare_for_start(options) do
-    case Keyword.get(options, :batchers, []) do
-      [] ->
-        Keyword.delete(options, :storage)
+    case Keyword.get(options, :storage) do
+      false ->
+        false
 
       _ ->
-        options
-        |> Keyword.get(:storage, SpiderMan.Storage.JsonLines)
-        |> prepare_for_start(options)
+        case Keyword.get(options, :batchers, []) do
+          [] ->
+            Keyword.delete(options, :storage)
+
+          _ ->
+            options
+            |> Keyword.get(:storage, SpiderMan.Storage.JsonLines)
+            |> prepare_for_start(options)
+        end
     end
   end
 

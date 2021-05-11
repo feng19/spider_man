@@ -391,38 +391,48 @@ defmodule SpiderMan.Engine do
 
     Logger.info("#{log_prefix} setup components prepare_for_start finish.")
 
-    # start components
-    {:ok, supervisor_pid} =
-      Supervisor.start_link(
-        [
-          {Downloader, downloader_options},
-          {Spider, spider_options},
-          {ItemProcessor, item_processor_options}
-        ],
-        strategy: :one_for_one,
-        max_restarts: 0,
-        name: :"#{spider}.Supervisor"
-      )
-
-    [
-      {ItemProcessor, item_processor_pid, :worker, [ItemProcessor]},
-      {Spider, spider_pid, :worker, [Spider]},
-      {Downloader, downloader_pid, :worker, [Downloader]}
-    ] = Supervisor.which_children(supervisor_pid)
-
-    Logger.info("#{log_prefix} setup components finish.")
-
     Map.merge(state, %{
       # options
       downloader_options: downloader_options,
       spider_options: spider_options,
-      item_processor_options: item_processor_options,
-      # components
-      supervisor_pid: supervisor_pid,
-      downloader_pid: downloader_pid,
-      spider_pid: spider_pid,
-      item_processor_pid: item_processor_pid
+      item_processor_options: item_processor_options
     })
+    |> start_components()
+  end
+
+  defp start_components(state) do
+    name = :"#{state.spider}.Supervisor"
+    state = Map.merge(state, %{downloader_pid: nil, spider_pid: nil, item_processor_pid: nil})
+
+    {components, specs} =
+      [
+        {:downloader_pid, {Downloader, state.downloader_options}},
+        {:spider_pid, {Spider, state.spider_options}},
+        {:item_processor_pid, {ItemProcessor, state.item_processor_options}}
+      ]
+      |> Enum.filter(&match?({_, {_, options}} when is_list(options), &1))
+      |> Enum.unzip()
+
+    Supervisor.start_link(
+      specs,
+      strategy: :one_for_one,
+      max_restarts: 0,
+      name: name
+    )
+    |> case do
+      {:ok, supervisor_pid} ->
+        Logger.info("#{state.log_prefix} setup components finish.")
+
+        component_pids =
+          Supervisor.which_children(supervisor_pid) |> Enum.reduce([], &[elem(&1, 1) | &2])
+
+        Enum.zip(components, component_pids)
+        |> Enum.into(state)
+        |> Map.put(:supervisor_pid, supervisor_pid)
+
+      error ->
+        raise "start name: #{name} error: #{inspect(error)}"
+    end
   end
 
   defp get_component_pid(:downloader, %{downloader_pid: pid}), do: pid

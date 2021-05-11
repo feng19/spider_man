@@ -1,6 +1,6 @@
 defmodule SpiderMan.StorageTest do
   use ExUnit.Case, async: true
-  alias SpiderMan.Storage
+  alias SpiderMan.{Storage, CommonSpider}
 
   setup_all do
     File.rm_rf("data")
@@ -45,5 +45,16 @@ defmodule SpiderMan.StorageTest do
 
     assert :ok = Storage.prepare_for_stop(options)
     assert not Process.alive?(io_device)
+  end
+
+  test "storage=false", %{spider: spider} do
+    handle_response = fn _response, _context -> %{} end
+
+    assert {:ok, _pid} =
+             CommonSpider.start(spider, [handle_response: handle_response],
+               item_processor_options: [storage: false]
+             )
+
+    assert %{item_processor_options: false, item_processor_pid: nil} = SpiderMan.get_state(spider)
   end
 end

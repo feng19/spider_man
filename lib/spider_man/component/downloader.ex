@@ -13,28 +13,48 @@ defmodule SpiderMan.Component.Downloader do
       Logger.debug("Downloader get message: #{inspect(data)}", spider: spider)
     end
 
-    case Pipeline.call(context.pipelines, data, spider) do
-      %{key: key, url: url, options: options, flag: flag} ->
-        requester = context.requester
-
-        case requester.request(url, options, context) do
-          {:ok, env} ->
-            # push successful events to next_tid
-            Utils.push_events_to_next_producer_ets(context.next_tid, context.tid, [
-              %Response{key: key, env: env, flag: flag}
-            ])
-
-            %{message | data: :ok}
-
-          {:error, reason} ->
-            Message.failed(message, reason)
-        end
-
+    with %{url: url, options: options} = request <-
+           Pipeline.call(context.pipelines, data, spider),
+         {:ok, env} <- context.requester.request(url, options, context),
+         :ok <- handle_response(env, request, context) do
+      %{message | data: :ok}
+    else
       :skiped ->
         Message.failed(message, :skiped)
 
       {:error, reason} ->
         Message.failed(message, reason)
+    end
+  end
+
+  defp handle_response(
+         env,
+         %{key: key, flag: flag},
+         %{next_tid: next_tid, tid: tid} = context
+       ) do
+    if flag in Map.get(context, :save2file_flags, []) do
+      # save2file
+      path =
+        Map.get(context, :save2dir, "data")
+        |> Path.join(to_string(key))
+
+      result =
+        with :ok <- path |> Path.dirname() |> File.mkdir_p() do
+          File.write(path, env.body)
+        end
+
+      Logger.info("Downloader key: #{key} save to file: #{path} result: #{result}",
+        spider: context.spider
+      )
+
+      result
+    else
+      # push successful events to next_tid
+      Utils.push_events_to_next_producer_ets(next_tid, tid, [
+        %Response{key: key, env: env, flag: flag}
+      ])
+
+      :ok
     end
   end
 end

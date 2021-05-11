@@ -20,6 +20,7 @@ defmodule SpiderMan.Utils do
     %Item{key: key, value: value, options: options, retries: max_retries}
   end
 
+  def set_key(struct, key), do: %{struct | key: key}
   def set_flag(struct, flag), do: %{struct | flag: flag}
 
   def merge_settings(old_settings, new_settings) do
