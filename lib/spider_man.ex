@@ -1,6 +1,20 @@
 defmodule SpiderMan do
   @moduledoc """
   Documentation for `SpiderMan`.
+
+  ## Spider Life Cycle
+    0. `Spider.settings()`
+    1. `Spider.prepare_for_start(:pre, state)`
+    2. `Spider.prepare_for_start_component(:downloader, state)`
+    3. `Spider.prepare_for_start_component(:spider, state)`
+    4. `Spider.prepare_for_start_component(:item_processor, state)`
+    5. `Spider.prepare_for_start(:post, state)`
+    6. `Spider.init(state)`
+    6. `Spider.handle_response(response, context)`
+    7. `Spider.prepare_for_stop_component(:downloader, state)`
+    8. `Spider.prepare_for_stop_component(:spider, state)`
+    9. `Spider.prepare_for_stop_component(:item_processor, state)`
+    10. `Spider.prepare_for_stop(state)`
   """
   alias SpiderMan.{Engine, Configuration, Request, Response, Item}
 
@@ -20,11 +34,13 @@ defmodule SpiderMan do
               optional(:items) => [Item.t()]
             }
   @callback settings() :: settings
+  @callback init(state) :: state when state: Engine.state()
   @callback prepare_for_start(prepare_for_start_stage, state) :: state when state: Engine.state()
   @callback prepare_for_stop(Engine.state()) :: :ok
   @callback prepare_for_start_component(component, options) :: options when options: keyword
   @callback prepare_for_stop_component(component, options :: keyword) :: :ok
   @optional_callbacks settings: 0,
+                      init: 1,
                       prepare_for_start: 2,
                       prepare_for_stop: 1,
                       prepare_for_start_component: 2,

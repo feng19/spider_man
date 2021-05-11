@@ -17,6 +17,7 @@ defmodule SpiderMan.CommonSpiderTest do
     wrong_fun = fn -> nil end
     handle_response = fn _response, _context -> %{} end
     prepare_for_start = fn _stage, state -> state end
+    init = fn state -> state end
     prepare_for_stop = fn _state -> :ok end
     prepare_for_start_component = fn _component, options -> options end
     prepare_for_stop_component = fn _component, _options -> :ok end
@@ -45,21 +46,17 @@ defmodule SpiderMan.CommonSpiderTest do
 
     assert {:error, ^error_msg} = CommonSpider.start(spider, handle_response: wrong_fun)
 
-    # wrong callback - prepare_for_start
+    # wrong callback checks
+    test_wrong_callback(:init, 1, spider)
     test_wrong_callback(:prepare_for_start, 2, spider)
-
-    # wrong callback - prepare_for_stop
     test_wrong_callback(:prepare_for_stop, 1, spider)
-
-    # wrong callback - prepare_for_start_component
     test_wrong_callback(:prepare_for_start_component, 2, spider)
-
-    # wrong callback - prepare_for_stop_component
     test_wrong_callback(:prepare_for_stop_component, 2, spider)
 
     assert {:ok, _pid} =
              CommonSpider.start(spider,
                handle_response: handle_response,
+               init: init,
                prepare_for_start: prepare_for_start,
                prepare_for_stop: prepare_for_stop,
                prepare_for_start_component: prepare_for_start_component,

@@ -106,6 +106,15 @@ defmodule SpiderMan.Engine do
       end
 
     Logger.info("#{log_prefix} setup prepare_for_start finish.")
+
+    state =
+      if function_exported?(spider_module, :init, 1) do
+        spider_module.init(state)
+      else
+        state
+      end
+
+    Logger.info("#{log_prefix} setup init finish.")
     Logger.info("#{log_prefix} setup success, status: #{status}.")
     {:ok, state}
   end

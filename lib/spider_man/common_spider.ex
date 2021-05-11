@@ -44,6 +44,15 @@ defmodule SpiderMan.CommonSpider do
   end
 
   @impl true
+  def init(state) do
+    if callback = Keyword.get(state.callbacks, :init) do
+      callback.(state)
+    else
+      state
+    end
+  end
+
+  @impl true
   def prepare_for_start_component(component, options) do
     if callback = Keyword.get(options, :prepare_for_start) do
       callback.(component, options)
@@ -94,6 +103,7 @@ defmodule SpiderMan.CommonSpider do
           callbacks
           |> check_callback(:prepare_for_start, 2)
           |> check_callback(:prepare_for_stop, 1)
+          |> check_callback(:init, 1)
           |> check_callback(:prepare_for_start_component, 2)
           |> check_callback(:prepare_for_stop_component, 2)
 
