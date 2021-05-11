@@ -56,7 +56,8 @@ defmodule SpiderMan do
           build_request: 3,
           build_item: 2,
           build_item: 3,
-          build_item: 4
+          build_item: 4,
+          set_flag: 2
         ]
 
       @behaviour SpiderMan

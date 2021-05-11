@@ -20,6 +20,8 @@ defmodule SpiderMan.Utils do
     %Item{key: key, value: value, options: options, retries: max_retries}
   end
 
+  def set_flag(struct, flag), do: %{struct | flag: flag}
+
   def merge_settings(old_settings, new_settings) do
     Keyword.merge(old_settings, new_settings, fn _k, v1, v2 ->
       Keyword.merge(v1, v2, fn

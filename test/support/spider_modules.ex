@@ -32,7 +32,7 @@ SpiderMan.Modules.create_spider(EngineTest)
 
 defmodule Spider0 do
   use SpiderMan
-  alias SpiderMan.{Requester, Response, Utils}
+  alias SpiderMan.{Requester, Response}
   alias SpiderMan.Pipeline.{SetCookie, DuplicateFilter}
 
   @impl true
@@ -68,8 +68,8 @@ defmodule Spider0 do
 
     case key do
       "/" ->
-        items = Enum.map(1..10, &Utils.build_item(&1, &1))
-        requests = Enum.map(1..10, &Utils.build_request("/#{&1}"))
+        items = Enum.map(1..10, &build_item(&1, &1))
+        requests = Enum.map(1..10, &build_request("/#{&1}"))
         %{items: items, requests: requests}
 
       _ ->
