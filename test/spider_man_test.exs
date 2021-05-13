@@ -47,9 +47,10 @@ defmodule SpiderMan.SpiderManTest do
   test "stats", %{spider: spider} do
     assert [
              status: :running,
-             downloader: [memory: _, size: 0],
-             spider: [memory: _, size: 0],
-             item_processor: [memory: _, size: 0]
+             common_pipeline_tid: [memory: _, size: 0],
+             downloader_tid: [memory: _, size: 0],
+             item_processor_tid: [memory: _, size: 0],
+             spider_tid: [memory: _, size: 0]
            ] = SpiderMan.stats(spider)
   end
 

@@ -368,10 +368,12 @@ defmodule SpiderMan.EngineTest do
              &match?(^pipeline_ets_size, :ets.info(&1, :size))
            )
 
-    assert ^common_pipeline_tid = :persistent_term.get({spider, :common_pipeline_tid})
-    assert ^downloader_tid = :persistent_term.get({spider, :downloader_tid})
-    assert ^spider_tid = :persistent_term.get({spider, :spider_tid})
-    assert ^item_processor_tid = :persistent_term.get({spider, :item_processor_tid})
+    assert %{
+             downloader_tid: ^downloader_tid,
+             spider_tid: ^spider_tid,
+             item_processor_tid: ^item_processor_tid,
+             common_pipeline_tid: ^common_pipeline_tid
+           } = :persistent_term.get(spider)
   end
 
   defp has_keys?(keyword, keys) do

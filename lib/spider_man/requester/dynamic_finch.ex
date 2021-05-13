@@ -91,8 +91,9 @@ defmodule SpiderMan.Requester.DynamicFinch do
   end
 
   def switch_finch(spider, spec_options, adapter_options, request_options) do
-    tid = :persistent_term.get({spider, :common_pipeline_tid})
-    switch_finch(tid, spider, spec_options, adapter_options, request_options)
+    :persistent_term.get(spider)
+    |> Map.get(:common_pipeline_tid)
+    |> switch_finch(spider, spec_options, adapter_options, request_options)
   end
 
   def switch_finch(tid, spider, spec_options, adapter_options, request_options) do

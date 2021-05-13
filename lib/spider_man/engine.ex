@@ -268,10 +268,14 @@ defmodule SpiderMan.Engine do
 
   defp setup_ets_tables(%{spider: spider, log_prefix: log_prefix} = state) do
     state = do_setup_ets_tables(state)
-    :persistent_term.put({spider, :downloader_tid}, state.downloader_tid)
-    :persistent_term.put({spider, :spider_tid}, state.spider_tid)
-    :persistent_term.put({spider, :item_processor_tid}, state.item_processor_tid)
-    :persistent_term.put({spider, :common_pipeline_tid}, state.common_pipeline_tid)
+
+    :persistent_term.put(spider, %{
+      downloader_tid: state.downloader_tid,
+      spider_tid: state.spider_tid,
+      item_processor_tid: state.item_processor_tid,
+      common_pipeline_tid: state.common_pipeline_tid
+    })
+
     Logger.info("#{log_prefix} setup ets tables finish.")
     state
   end

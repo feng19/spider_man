@@ -108,9 +108,9 @@ defmodule SpiderMan do
   @doc "insert multiple requests to spider"
   @spec insert_requests(spider, requests) :: true | nil
   def insert_requests(spider, requests) do
-    if tid = :persistent_term.get({spider, :downloader_tid}, nil) do
+    if info = :persistent_term.get(spider, nil) do
       objects = Enum.map(requests, &{&1.key, &1})
-      :ets.insert(tid, objects)
+      :ets.insert(info.downloader_tid, objects)
     end
   end
 
@@ -122,15 +122,23 @@ defmodule SpiderMan do
           item_processor: component_stats
         ]
   def stats(spider) do
-    components = Enum.map(@components, &{&1, stats(spider, &1)})
+    components =
+      :persistent_term.get(spider)
+      |> Enum.map(fn {key, tid} ->
+        {key,
+         tid
+         |> :ets.info()
+         |> Keyword.take([:size, :memory])}
+      end)
+
     [{:status, Engine.status(spider)} | components]
   end
 
   @doc "fetch component's statistics"
   @spec stats(spider, component) :: component_stats
   def stats(spider, component) do
-    if tid = :persistent_term.get({spider, :"#{component}_tid"}, nil) do
-      tid |> :ets.info() |> Keyword.take([:size, :memory])
+    if info = :persistent_term.get(spider, nil) do
+      info[:"#{component}_tid"] |> :ets.info() |> Keyword.take([:size, :memory])
     end
   end
 
