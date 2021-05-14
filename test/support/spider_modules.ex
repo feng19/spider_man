@@ -39,7 +39,6 @@ defmodule Spider0 do
   def settings do
     [
       downloader_options: [
-        # context: %{debug: true},
         pipelines: [DuplicateFilter, SetCookie],
         requester:
           {Requester.Finch,
@@ -50,11 +49,9 @@ defmodule Spider0 do
            ]}
       ],
       spider_options: [
-        # context: %{debug: true},
         pipelines: [DuplicateFilter, SetCookie]
       ],
       item_processor_options: [
-        # context: %{debug: true}
         # batchers: []
       ]
     ]

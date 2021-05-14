@@ -7,13 +7,7 @@ defmodule SpiderMan.Component.Spider do
 
   @impl true
   def handle_message(_processor, message, %{spider: spider} = context) do
-    data = message.data
-
-    if context[:debug] do
-      Logger.debug("Spider get message: #{inspect(data)}", spider: spider)
-    end
-
-    case Pipeline.call(context.pipelines, data, spider) do
+    case Pipeline.call(context.pipelines, message.data, spider) do
       response when is_struct(response) ->
         spider_module = context.spider_module
 

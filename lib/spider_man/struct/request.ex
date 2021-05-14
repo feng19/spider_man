@@ -4,7 +4,7 @@ defmodule SpiderMan.Request do
   defstruct [:key, :url, :flag, options: [], retries: 0]
 
   @type t :: %__MODULE__{
-          key: term,
+          key: any,
           url: binary,
           options: keyword,
           retries: integer,

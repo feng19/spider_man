@@ -4,8 +4,8 @@ defmodule SpiderMan.Item do
   defstruct [:key, :value, :flag, options: [], retries: 0]
 
   @type t :: %__MODULE__{
-          key: term,
-          value: term,
+          key: any,
+          value: any,
           options: keyword,
           retries: integer,
           flag: any

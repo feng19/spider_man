@@ -8,16 +8,19 @@ defmodule SpiderMan.Configuration do
       processor: [max_demand: 1],
       rate_limiting: [allowed_messages: 10, interval: 1000],
       pipelines: [DuplicateFilter],
+      post_pipelines: [],
       context: %{}
     ],
     spider_options: [
       processor: [max_demand: 1],
       pipelines: [],
+      post_pipelines: [],
       context: %{}
     ],
     item_processor_options: [
       storage: SpiderMan.Storage.JsonLines,
       pipelines: [DuplicateFilter],
+      post_pipelines: [],
       context: %{},
       batchers: [
         default: [
@@ -130,22 +133,31 @@ defmodule SpiderMan.Configuration do
       ]
     ]
 
-    {processor_spec, rate_limiting_spec, pipelines_spec} =
+    {processor_spec, rate_limiting_spec, pipelines_spec, post_pipelines_spec} =
       case component do
         :downloader ->
           {
             Keyword.put(processor_spec, :default, max_demand: 1),
             Keyword.put(rate_limiting_spec, :default, allowed_messages: 10, interval: 1000),
-            Keyword.put(pipelines_spec, :default, [DuplicateFilter])
+            Keyword.put(pipelines_spec, :default, [DuplicateFilter]),
+            pipelines_spec
           }
 
         :spider ->
-          {Keyword.put(processor_spec, :default, max_demand: 1), rate_limiting_spec,
-           pipelines_spec}
+          {
+            Keyword.put(processor_spec, :default, max_demand: 1),
+            rate_limiting_spec,
+            pipelines_spec,
+            pipelines_spec
+          }
 
         :item_processor ->
-          {processor_spec, rate_limiting_spec,
-           Keyword.put(pipelines_spec, :default, [DuplicateFilter])}
+          {
+            processor_spec,
+            rate_limiting_spec,
+            Keyword.put(pipelines_spec, :default, [DuplicateFilter]),
+            pipelines_spec
+          }
       end
 
     [
@@ -153,6 +165,7 @@ defmodule SpiderMan.Configuration do
       processor: processor_spec,
       rate_limiting: rate_limiting_spec,
       pipelines: pipelines_spec,
+      post_pipelines: post_pipelines_spec,
       buffer_size: [type: :pos_integer],
       buffer_keep: [type: :pos_integer],
       retry_interval: [type: :pos_integer, default: 200]

@@ -42,9 +42,15 @@ defmodule SpiderMan.Component.Builder do
   defp transform_broadway_options(component, options) do
     options = Map.new(options)
     spider = options.spider
-    options = Map.merge(%{next_tid: nil, pipelines: [], additional_specs: []}, options)
+
+    options =
+      Map.merge(
+        %{next_tid: nil, pipelines: [], post_pipelines: [], additional_specs: []},
+        options
+      )
+
     {pipelines, options} = Pipeline.prepare_for_start(options.pipelines, options)
-    options = Map.put(options, :pipelines, pipelines)
+    {post_pipelines, options} = Pipeline.prepare_for_start(options.post_pipelines, options)
 
     Logger.info(
       "!! spider: #{inspect(spider)}, component: #{inspect(component)} pipelines setup prepare_for_start finish."
@@ -74,7 +80,8 @@ defmodule SpiderMan.Component.Builder do
     context =
       options
       |> Map.get(:context, %{})
-      |> Map.merge(Map.take(options, [:tid, :next_tid, :spider, :spider_module, :pipelines]))
+      |> Map.merge(%{pipelines: pipelines, post_pipelines: post_pipelines})
+      |> Map.merge(Map.take(options, [:tid, :next_tid, :spider, :spider_module]))
 
     [
       name: process_name(spider, component),

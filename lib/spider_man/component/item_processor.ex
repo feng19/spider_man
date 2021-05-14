@@ -7,13 +7,7 @@ defmodule SpiderMan.Component.ItemProcessor do
 
   @impl true
   def handle_message(_processor, message, %{spider: spider} = context) do
-    data = message.data
-
-    if context[:debug] do
-      Logger.debug("ItemProcessor get message: #{inspect(data)}", spider: spider)
-    end
-
-    case Pipeline.call(context.pipelines, data, spider) do
+    case Pipeline.call(context.pipelines, message.data, spider) do
       :skiped -> Message.failed(message, :skiped)
       {:error, reason} -> Message.failed(message, reason)
       {batcher, item} -> %{message | data: item, batcher: batcher}

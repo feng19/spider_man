@@ -217,9 +217,8 @@ defmodule SpiderMan.Engine do
       prepare_for_stop_component(component, options, spider_module)
       Logger.info("#{log_prefix} #{component} component prepare_for_stop finish.")
 
-      options
-      |> Keyword.fetch!(:pipelines)
-      |> Pipeline.prepare_for_stop()
+      options |> Keyword.fetch!(:pipelines) |> Pipeline.prepare_for_stop()
+      options |> Keyword.fetch!(:post_pipelines) |> Pipeline.prepare_for_stop()
 
       Logger.info("#{log_prefix} #{component} component pipelines prepare_for_stop finish.")
     end)
@@ -367,6 +366,7 @@ defmodule SpiderMan.Engine do
 
     downloader_options =
       [
+        component: :downloader,
         tid: downloader_tid,
         next_tid: spider_tid,
         pipeline_tid: downloader_pipeline_tid
@@ -378,6 +378,7 @@ defmodule SpiderMan.Engine do
 
     spider_options =
       [
+        component: :spider,
         tid: spider_tid,
         next_tid: item_processor_tid,
         pipeline_tid: spider_pipeline_tid
@@ -387,7 +388,11 @@ defmodule SpiderMan.Engine do
       |> prepare_for_start_component(:spider, spider_module)
 
     item_processor_options =
-      [tid: item_processor_tid, pipeline_tid: item_processor_pipeline_tid]
+      [
+        component: :item_processor,
+        tid: item_processor_tid,
+        pipeline_tid: item_processor_pipeline_tid
+      ]
       |> Kernel.++(broadway_base_options)
       |> Kernel.++(state.item_processor_options)
       |> Storage.prepare_for_start()

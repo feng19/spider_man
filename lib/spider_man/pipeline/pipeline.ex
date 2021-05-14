@@ -2,9 +2,9 @@ defmodule SpiderMan.Pipeline do
   @moduledoc false
   require Logger
 
-  @type event :: term
-  @type arg :: term
-  @type call_return :: {:ok, event} | {:error, error :: term} | event
+  @type event :: any
+  @type arg :: any
+  @type call_return :: {:ok, event} | {:error, error :: any} | :skiped | event
   @type t :: module | {module, function_name :: atom()} | mfa | (term -> call_return)
 
   @callback call(event, arg) :: call_return

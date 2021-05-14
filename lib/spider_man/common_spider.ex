@@ -2,6 +2,8 @@ defmodule SpiderMan.CommonSpider do
   use SpiderMan
   require Logger
 
+  @spec start(SpiderMan.spider(), callbacks :: [fun], SpiderMan.settings()) ::
+          Supervisor.on_start_child()
   def start(spider, callbacks, settings \\ []) do
     with true <- Keyword.keyword?(callbacks),
          {:ok, callbacks} <- check_callbacks(callbacks) do
