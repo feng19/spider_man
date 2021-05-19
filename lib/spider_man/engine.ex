@@ -65,6 +65,10 @@ defmodule SpiderMan.Engine do
 
   def continue_component(_spider, _component, _timeout), do: :unknown_component
 
+  def retry_failed(spider, max_retries \\ 3, timeout \\ :infinity) do
+    GenServer.call(spider, {:retry_failed, max_retries}, timeout)
+  end
+
   @impl true
   def init(options) do
     Process.flag(:trap_exit, true)
@@ -167,10 +171,14 @@ defmodule SpiderMan.Engine do
 
     Enum.each(
       [
+        # common ets
+        {"failed", state.failed_tid},
+        {"common_pipeline", state.common_pipeline_tid},
+        # producer ets
         {"downloader", state.downloader_tid},
         {"spider", state.spider_tid},
         {"item_processor", state.item_processor_tid},
-        {"common_pipeline", state.common_pipeline_tid},
+        # pipeline ets
         {"downloader_pipeline", state.downloader_pipeline_tid},
         {"spider_pipeline", state.spider_pipeline_tid},
         {"item_processor_pipeline", state.item_processor_pipeline_tid}
@@ -183,6 +191,34 @@ defmodule SpiderMan.Engine do
   end
 
   def handle_call({:dump2file, _}, _from, state), do: {:reply, :status_error, state}
+
+  def handle_call(
+        {:retry_failed, max_retries},
+        _from,
+        %{
+          failed_tid: failed_tid,
+          downloader_tid: downloader_tid,
+          spider_tid: spider_tid,
+          item_processor_tid: item_processor_tid
+        } = state
+      ) do
+    n =
+      Utils.ets_stream(failed_tid)
+      |> Enum.reduce(0, fn {k = {component, key}, data}, acc ->
+        component_tid =
+          case component do
+            :downloader -> downloader_tid
+            :spider -> spider_tid
+            :item_processor -> item_processor_tid
+          end
+
+        :ets.insert(component_tid, {key, %{data | retries: max_retries}})
+        :ets.delete(failed_tid, k)
+        acc + 1
+      end)
+
+    {:reply, {:ok, n}, state}
+  end
 
   def handle_call(msg, _from, state) do
     Logger.warn("unsupported call msg: #{msg}.")
@@ -217,8 +253,10 @@ defmodule SpiderMan.Engine do
       prepare_for_stop_component(component, options, spider_module)
       Logger.info("#{log_prefix} #{component} component prepare_for_stop finish.")
 
-      options |> Keyword.fetch!(:pipelines) |> Pipeline.prepare_for_stop()
-      options |> Keyword.fetch!(:post_pipelines) |> Pipeline.prepare_for_stop()
+      if options do
+        options |> Keyword.fetch!(:pipelines) |> Pipeline.prepare_for_stop()
+        options |> Keyword.fetch!(:post_pipelines) |> Pipeline.prepare_for_stop()
+      end
 
       Logger.info("#{log_prefix} #{component} component pipelines prepare_for_stop finish.")
     end)
@@ -269,10 +307,11 @@ defmodule SpiderMan.Engine do
     state = do_setup_ets_tables(state)
 
     :persistent_term.put(spider, %{
+      failed_tid: state.failed_tid,
+      common_pipeline_tid: state.common_pipeline_tid,
       downloader_tid: state.downloader_tid,
       spider_tid: state.spider_tid,
-      item_processor_tid: state.item_processor_tid,
-      common_pipeline_tid: state.common_pipeline_tid
+      item_processor_tid: state.item_processor_tid
     })
 
     Logger.info("#{log_prefix} setup ets tables finish.")
@@ -285,10 +324,14 @@ defmodule SpiderMan.Engine do
     ets_tables =
       Map.new(
         [
+          # common ets
+          failed_tid: "failed",
+          common_pipeline_tid: "common_pipeline",
+          # producer ets
           downloader_tid: "downloader",
           spider_tid: "spider",
           item_processor_tid: "item_processor",
-          common_pipeline_tid: "common_pipeline",
+          # pipeline ets
           downloader_pipeline_tid: "downloader_pipeline",
           spider_pipeline_tid: "spider_pipeline",
           item_processor_pipeline_tid: "item_processor_pipeline"
@@ -310,10 +353,14 @@ defmodule SpiderMan.Engine do
     pipeline_ets_options = [:set, :public, write_concurrency: true, read_concurrency: true]
 
     ets_tables = %{
+      # common ets
+      failed_tid: :ets.new(:failed, pipeline_ets_options),
+      common_pipeline_tid: :ets.new(:common_pipeline, pipeline_ets_options),
+      # producer ets
       downloader_tid: :ets.new(:downloader, ets_options),
       spider_tid: :ets.new(:spider, ets_options),
       item_processor_tid: :ets.new(:item_processor, ets_options),
-      common_pipeline_tid: :ets.new(:common_pipeline, pipeline_ets_options),
+      # pipeline ets
       downloader_pipeline_tid: :ets.new(:downloader_pipeline, pipeline_ets_options),
       spider_pipeline_tid: :ets.new(:spider_pipeline, pipeline_ets_options),
       item_processor_pipeline_tid: :ets.new(:item_processor_pipeline, pipeline_ets_options)
@@ -347,10 +394,14 @@ defmodule SpiderMan.Engine do
            spider_module: spider_module,
            status: status,
            log_prefix: log_prefix,
+           # common ets
+           common_pipeline_tid: common_pipeline_tid,
+           failed_tid: failed_tid,
+           # producer ets
            downloader_tid: downloader_tid,
            spider_tid: spider_tid,
            item_processor_tid: item_processor_tid,
-           common_pipeline_tid: common_pipeline_tid,
+           # pipeline ets
            downloader_pipeline_tid: downloader_pipeline_tid,
            spider_pipeline_tid: spider_pipeline_tid,
            item_processor_pipeline_tid: item_processor_pipeline_tid
@@ -361,7 +412,8 @@ defmodule SpiderMan.Engine do
       spider: spider,
       spider_module: spider_module,
       status: status,
-      common_pipeline_tid: common_pipeline_tid
+      common_pipeline_tid: common_pipeline_tid,
+      failed_tid: failed_tid
     ]
 
     downloader_options =

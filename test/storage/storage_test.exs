@@ -56,5 +56,8 @@ defmodule SpiderMan.StorageTest do
              )
 
     assert %{item_processor_options: false, item_processor_pid: nil} = SpiderMan.get_state(spider)
+    assert :ok = SpiderMan.suspend(spider)
+    assert :ok = SpiderMan.continue(spider)
+    assert :ok = SpiderMan.stop(spider)
   end
 end

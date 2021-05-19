@@ -49,6 +49,7 @@ defmodule SpiderMan.SpiderManTest do
              status: :running,
              common_pipeline_tid: [memory: _, size: 0],
              downloader_tid: [memory: _, size: 0],
+             failed_tid: [memory: _, size: 0],
              item_processor_tid: [memory: _, size: 0],
              spider_tid: [memory: _, size: 0]
            ] = SpiderMan.stats(spider)

@@ -24,7 +24,7 @@ defmodule SpiderMan do
   @type request :: Request.t()
   @type requests :: [request]
   @type component :: :downloader | :spider | :item_processor
-  @type component_stats :: [size: pos_integer, memory: pos_integer] | nil
+  @type ets_stats :: [size: pos_integer, memory: pos_integer] | nil
   @type prepare_for_start_stage :: :pre | :post
 
   @components [:downloader, :spider, :item_processor]
@@ -100,6 +100,10 @@ defmodule SpiderMan do
   @spec continue(spider, timeout) :: :ok
   defdelegate continue(spider, timeout \\ :infinity), to: Engine
 
+  @doc "retry failed events for a spider"
+  @spec retry_failed(spider, max_retries :: integer, timeout) :: {:ok, count :: integer}
+  defdelegate retry_failed(spider, max_retries \\ 3, timeout \\ :infinity), to: Engine
+
   @doc "insert a request to spider"
   @spec insert_request(spider, request) :: true | nil
   def insert_request(spider, request) when is_struct(request, Request),
@@ -117,9 +121,11 @@ defmodule SpiderMan do
   @doc "fetch spider's statistics"
   @spec stats(spider) :: [
           status: status,
-          downloader: component_stats,
-          spider: component_stats,
-          item_processor: component_stats
+          common_pipeline_tid: ets_stats,
+          downloader_tid: ets_stats,
+          failed_tid: ets_stats,
+          spider_tid: ets_stats,
+          item_processor_tid: ets_stats
         ]
   def stats(spider) do
     components =
@@ -135,7 +141,7 @@ defmodule SpiderMan do
   end
 
   @doc "fetch component's statistics"
-  @spec stats(spider, component) :: component_stats
+  @spec stats(spider, component) :: ets_stats
   def stats(spider, component) do
     if info = :persistent_term.get(spider, nil) do
       info[:"#{component}_tid"] |> :ets.info() |> Keyword.take([:size, :memory])

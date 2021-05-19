@@ -52,6 +52,8 @@ defmodule SpiderMan.Storage do
 
   defp prepare_for_start(nil, options), do: options
 
+  def prepare_for_stop(false), do: :ok
+
   def prepare_for_stop(options) do
     with storage when storage != nil <- Keyword.get(options, :storage),
          true <- function_exported?(storage, :prepare_for_stop, 1) do

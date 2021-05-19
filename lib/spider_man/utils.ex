@@ -46,6 +46,8 @@ defmodule SpiderMan.Utils do
 
   def producer_status(broadway), do: call_producer(broadway, :status)
 
+  def call_producer(nil, _msg), do: :ok
+
   def call_producer(broadway, msg) do
     [producer_name] = Broadway.producer_names(broadway)
     GenStage.call(producer_name, msg)
@@ -64,5 +66,17 @@ defmodule SpiderMan.Utils do
       [] -> :skip
       events -> :ets.insert(next_tid, events)
     end
+  end
+
+  def ets_stream(table) do
+    Stream.unfold(:ets.first(table), fn
+      :"$end_of_table" ->
+        nil
+
+      key ->
+        [record] = :ets.lookup(table, key)
+        next_key = :ets.next(table, key)
+        {record, next_key}
+    end)
   end
 end

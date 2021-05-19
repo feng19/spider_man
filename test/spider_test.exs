@@ -57,7 +57,7 @@ defmodule SpiderMan.SpiderTest do
     # whole flow: downloader -> requester -> spider -> item_processor -> storage
 
     # insert a request
-    assert 0 = :ets.lookup_element(common_pipeline_tid, Pipeline.Counter, 2)
+    assert 0 = Pipeline.Counter.get(common_pipeline_tid)
     request = Utils.build_request(key)
     assert SpiderMan.insert_request(spider, request)
 
@@ -65,20 +65,20 @@ defmodule SpiderMan.SpiderTest do
     assert :ok = Engine.continue_component(spider, :downloader)
     assert :running = Utils.producer_status(downloader_pid)
     Process.sleep(100)
-    assert 1 = :ets.lookup_element(common_pipeline_tid, Pipeline.Counter, 2)
+    assert 1 = Pipeline.Counter.get(common_pipeline_tid)
 
     # continue spider
     assert :ok = Engine.continue_component(spider, :spider)
     assert :running = Utils.producer_status(spider_pid)
     Process.sleep(100)
-    assert 2 = :ets.lookup_element(common_pipeline_tid, Pipeline.Counter, 2)
+    assert 2 = Pipeline.Counter.get(common_pipeline_tid)
 
     # continue item_processor and capture storage log
     assert capture_log([level: :info], fn ->
              assert :ok = Engine.continue_component(spider, :item_processor)
              assert :running = Utils.producer_status(item_processor_pid)
              Process.sleep(100)
-             assert 3 = :ets.lookup_element(common_pipeline_tid, Pipeline.Counter, 2)
+             assert 3 = Pipeline.Counter.get(common_pipeline_tid)
            end) =~ ">> store item:"
   end
 
@@ -185,7 +185,7 @@ defmodule SpiderMan.SpiderTest do
   end
 
   defp wait_until_count(tid, count) do
-    if :ets.lookup_element(tid, Pipeline.Counter, 2) < count do
+    if Pipeline.Counter.get(tid) < count do
       Process.sleep(100)
       wait_until_count(tid, count)
     else

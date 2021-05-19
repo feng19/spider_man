@@ -1,6 +1,16 @@
 defmodule SpiderMan.EngineTest do
   use ExUnit.Case, async: true
-  alias SpiderMan.{Engine, CommonSpider, Request, Response, Item, Utils}
+
+  alias SpiderMan.{
+    Engine,
+    CommonSpider,
+    Request,
+    Response,
+    Item,
+    Utils,
+    Requester.JustReturn,
+    Pipeline
+  }
 
   setup_all do
     spider = EngineTest
@@ -22,10 +32,14 @@ defmodule SpiderMan.EngineTest do
     assert %{supervisor_pid: _, downloader_pid: _, spider_pid: _, item_processor_pid: _} = state
     # ets tables
     assert %{
+             # common ets
+             failed_tid: _,
+             common_pipeline_tid: _,
+             # producer ets
              downloader_tid: _,
              spider_tid: _,
              item_processor_tid: _,
-             common_pipeline_tid: _,
+             # pipeline ets
              downloader_pipeline_tid: _,
              spider_pipeline_tid: _,
              item_processor_pipeline_tid: _
@@ -59,6 +73,7 @@ defmodule SpiderMan.EngineTest do
              :tid,
              :next_tid,
              :common_pipeline_tid,
+             :failed_tid,
              :pipeline_tid,
              :pipelines,
              :context
@@ -83,6 +98,7 @@ defmodule SpiderMan.EngineTest do
              :tid,
              :next_tid,
              :common_pipeline_tid,
+             :failed_tid,
              :pipeline_tid,
              :pipelines,
              :context
@@ -107,6 +123,7 @@ defmodule SpiderMan.EngineTest do
              :spider_module,
              :tid,
              :common_pipeline_tid,
+             :failed_tid,
              :pipeline_tid,
              :pipelines,
              :context
@@ -234,6 +251,47 @@ defmodule SpiderMan.EngineTest do
     )
   end
 
+  test "retry_failed" do
+    {:ok, agent} = Agent.start_link(fn -> {:error, :anything} end)
+    handle_response = fn _response, _context -> Agent.get(agent, & &1) end
+    spider = :retry_failed
+
+    assert {:ok, _pid} =
+             CommonSpider.start(
+               spider,
+               [handle_response: handle_response],
+               status: :suspended,
+               downloader_options: [pipelines: [Pipeline.Counter], requester: JustReturn],
+               spider_options: [pipelines: [Pipeline.Counter]],
+               item_processor_options: [storage: false]
+             )
+
+    assert %{
+             failed_tid: failed_tid,
+             downloader_pipeline_tid: downloader_pipeline_tid,
+             spider_pipeline_tid: spider_pipeline_tid
+           } = SpiderMan.get_state(spider)
+
+    assert true = SpiderMan.insert_request(spider, Utils.build_request("1"))
+    assert 0 = Pipeline.Counter.get(downloader_pipeline_tid)
+    assert 0 = Pipeline.Counter.get(spider_pipeline_tid)
+    :ok = SpiderMan.continue(spider)
+    Process.sleep(300)
+
+    assert 1 = Pipeline.Counter.get(downloader_pipeline_tid)
+    assert 1 = Pipeline.Counter.get(spider_pipeline_tid)
+    assert [{{:spider, "1"}, %Response{retries: -1}}] = :ets.tab2list(failed_tid)
+
+    :ok = Agent.update(agent, fn _ -> %{} end)
+    assert {:ok, 1} = SpiderMan.retry_failed(spider)
+    assert [] = :ets.tab2list(failed_tid)
+    Process.sleep(200)
+
+    assert 1 = Pipeline.Counter.get(downloader_pipeline_tid)
+    assert 2 = Pipeline.Counter.get(spider_pipeline_tid)
+    assert :ok = SpiderMan.stop(spider)
+  end
+
   test "setup_ets_tables - new", %{spider: spider} do
     check_ets_tables(spider)
   end
@@ -258,10 +316,14 @@ defmodule SpiderMan.EngineTest do
       # insert some records to ets tables
 
       %{
+        # common ets
+        failed_tid: failed_tid,
+        common_pipeline_tid: common_pipeline_tid,
+        # producer ets
         downloader_tid: downloader_tid,
         spider_tid: spider_tid,
         item_processor_tid: item_processor_tid,
-        common_pipeline_tid: common_pipeline_tid,
+        # pipeline ets
         downloader_pipeline_tid: downloader_pipeline_tid,
         spider_pipeline_tid: spider_pipeline_tid,
         item_processor_pipeline_tid: item_processor_pipeline_tid
@@ -271,6 +333,7 @@ defmodule SpiderMan.EngineTest do
       :ets.insert(spider_tid, {1, %Response{key: 1, env: %Tesla.Env{url: 1}}})
       :ets.insert(item_processor_tid, {1, %Item{key: 1, value: 1}})
       :ets.insert(common_pipeline_tid, {1, :common_pipeline_tid})
+      :ets.insert(failed_tid, {1, :failed_tid})
       :ets.insert(downloader_pipeline_tid, {1, :downloader_pipeline_tid})
       :ets.insert(spider_pipeline_tid, {1, :spider_pipeline_tid})
       :ets.insert(item_processor_pipeline_tid, {1, :item_processor_pipeline_tid})
@@ -278,10 +341,14 @@ defmodule SpiderMan.EngineTest do
       assert :ok = Engine.dump2file_force(spider, file_name)
 
       suffix_of_tables = [
+        # common ets
+        "failed",
+        "common_pipeline",
+        # producer ets
         "downloader",
         "spider",
         "item_processor",
-        "common_pipeline",
+        # pipeline ets
         "downloader_pipeline",
         "spider_pipeline",
         "item_processor_pipeline"
@@ -307,10 +374,14 @@ defmodule SpiderMan.EngineTest do
 
       assert %{
                status: :suspended,
+               # common ets
+               failed_tid: failed_tid,
+               common_pipeline_tid: common_pipeline_tid,
+               # producer ets
                downloader_tid: downloader_tid,
                spider_tid: spider_tid,
                item_processor_tid: item_processor_tid,
-               common_pipeline_tid: common_pipeline_tid,
+               # pipeline ets
                downloader_pipeline_tid: downloader_pipeline_tid,
                spider_pipeline_tid: spider_pipeline_tid,
                item_processor_pipeline_tid: item_processor_pipeline_tid
@@ -319,6 +390,7 @@ defmodule SpiderMan.EngineTest do
       assert %Request{key: 1, url: 1} = :ets.lookup_element(downloader_tid, 1, 2)
       assert %Response{key: 1, env: %Tesla.Env{url: 1}} = :ets.lookup_element(spider_tid, 1, 2)
       assert %Item{key: 1, value: 1} = :ets.lookup_element(item_processor_tid, 1, 2)
+      assert :failed_tid = :ets.lookup_element(failed_tid, 1, 2)
       assert :common_pipeline_tid = :ets.lookup_element(common_pipeline_tid, 1, 2)
       assert :downloader_pipeline_tid = :ets.lookup_element(downloader_pipeline_tid, 1, 2)
       assert :spider_pipeline_tid = :ets.lookup_element(spider_pipeline_tid, 1, 2)
@@ -330,20 +402,28 @@ defmodule SpiderMan.EngineTest do
     state = SpiderMan.get_state(spider)
 
     %{
+      # common ets
+      failed_tid: failed_tid,
+      common_pipeline_tid: common_pipeline_tid,
+      # producer ets
       downloader_tid: downloader_tid,
       spider_tid: spider_tid,
       item_processor_tid: item_processor_tid,
-      common_pipeline_tid: common_pipeline_tid,
+      # pipeline ets
       downloader_pipeline_tid: downloader_pipeline_tid,
       spider_pipeline_tid: spider_pipeline_tid,
       item_processor_pipeline_tid: item_processor_pipeline_tid
     } = state
 
     tables = [
+      # common ets
+      failed_tid,
+      common_pipeline_tid,
+      # producer ets
       downloader_tid,
       spider_tid,
       item_processor_tid,
-      common_pipeline_tid,
+      # pipeline ets
       downloader_pipeline_tid,
       spider_pipeline_tid,
       item_processor_pipeline_tid
@@ -360,7 +440,10 @@ defmodule SpiderMan.EngineTest do
 
     assert Enum.all?(
              [
+               # common ets
+               failed_tid,
                common_pipeline_tid,
+               # pipeline ets
                downloader_pipeline_tid,
                spider_pipeline_tid,
                item_processor_pipeline_tid
@@ -369,10 +452,11 @@ defmodule SpiderMan.EngineTest do
            )
 
     assert %{
+             failed_tid: ^failed_tid,
+             common_pipeline_tid: ^common_pipeline_tid,
              downloader_tid: ^downloader_tid,
              spider_tid: ^spider_tid,
-             item_processor_tid: ^item_processor_tid,
-             common_pipeline_tid: ^common_pipeline_tid
+             item_processor_tid: ^item_processor_tid
            } = :persistent_term.get(spider)
   end
 

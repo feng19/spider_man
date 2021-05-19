@@ -19,4 +19,6 @@ defmodule SpiderMan.Pipeline.Counter do
     :ets.insert(tid, {__MODULE__, 0})
     {tid, options}
   end
+
+  def get(tid), do: :ets.lookup_element(tid, __MODULE__, 2)
 end

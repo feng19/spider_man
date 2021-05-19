@@ -65,7 +65,7 @@ defmodule SpiderMan.Component.Builder do
 
     producer = [
       module: {SpiderMan.Producer.ETS, ets_producer_options},
-      transformer: {__MODULE__, :transform, [Map.take(options, [:tid, :next_tid])]}
+      transformer: {__MODULE__, :transform, [Map.take(options, [:tid, :failed_tid, :component])]}
     ]
 
     producer =
@@ -100,20 +100,23 @@ defmodule SpiderMan.Component.Builder do
   end
 
   @impl Acknowledger
-  def ack(%{tid: nil}, _successful, _failed), do: :ok
+  def ack(%{tid: tid, failed_tid: failed_tid, component: component}, _successful, failed) do
+    {events, failed_events} =
+      failed
+      |> Stream.reject(&match?({:failed, :skiped}, &1.status))
+      |> Stream.map(& &1.data)
+      |> Enum.split_with(&(&1.retries > 0))
 
-  def ack(%{tid: tid}, _successful, failed) do
-    failed
-    |> Stream.reject(&match?({:failed, :skiped}, &1.status))
-    |> Stream.map(& &1.data)
-    |> Enum.reject(&(&1.retries <= 0))
-    |> case do
-      [] ->
-        :ok
+    failed_objects = Enum.map(failed_events, &{{component, &1.key}, &1})
+    :ets.insert(failed_tid, failed_objects)
 
-      events ->
-        objects = Enum.map(events, &{&1.key, &1})
-        :ets.insert(tid, objects)
-    end
+    retry_events(events, tid)
+  end
+
+  defp retry_events([], _tid), do: :ok
+
+  defp retry_events(events, tid) do
+    objects = Enum.map(events, &{&1.key, &1})
+    :ets.insert(tid, objects)
   end
 end
