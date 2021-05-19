@@ -1,6 +1,8 @@
 # SpiderMan
 
-**TODO: Add description**
+**SpiderMan,a fast high-level web crawling & scraping framework for Elixir.**
+
+inspired by [Crawly](https://github.com/elixir-crawly/crawly)(Elixir) and [Scrapy]()(Python).
 
 ## Installation
 
