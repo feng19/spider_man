@@ -44,8 +44,20 @@ defmodule SpiderMan.Requester.Finch do
 
     context = %{adapter_options: adapter_options, middlewares: middlewares}
 
+    producer =
+      case Keyword.fetch!(downloader_options, :producer) do
+        {producer, producer_options} ->
+          producer_options =
+            Keyword.update(producer_options, :additional_specs, [finch_spec], &[finch_spec | &1])
+
+          {producer, producer_options}
+
+        producer ->
+          {producer, [additional_specs: [finch_spec]]}
+      end
+
     downloader_options
-    |> Keyword.update(:additional_specs, [finch_spec], &[finch_spec | &1])
+    |> Keyword.put(:producer, producer)
     |> Keyword.update(
       :context,
       Map.put(context, :request_options, request_options),

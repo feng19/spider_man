@@ -56,26 +56,32 @@ defmodule SpiderMan.Component.Builder do
       "!! spider: #{inspect(spider)}, component: #{inspect(component)} pipelines setup prepare_for_start finish."
     )
 
-    ets_producer_options =
-      options
-      |> Map.take([:tid, :additional_specs, :status, :buffer_size, :buffer_keep, :retry_interval])
-      |> Map.to_list()
+    default_producer_options = options |> Map.take([:tid, :status]) |> Map.to_list()
 
-    processor = Map.get(options, :processor, [])
+    producer_module =
+      case options.producer do
+        producer when is_atom(producer) ->
+          {producer, default_producer_options}
 
-    producer = [
-      module: {SpiderMan.Producer.ETS, ets_producer_options},
+        {producer, producer_options} when is_atom(producer) and is_list(producer_options) ->
+          {producer, producer_options ++ default_producer_options}
+      end
+
+    producer_settings = [
+      module: producer_module,
       transformer: {__MODULE__, :transform, [Map.take(options, [:tid, :failed_tid, :component])]}
     ]
 
-    producer =
+    producer_settings =
       case Map.get(options, :rate_limiting) do
         rate_limiting when is_list(rate_limiting) ->
-          [{:rate_limiting, rate_limiting} | producer]
+          [{:rate_limiting, rate_limiting} | producer_settings]
 
         _ ->
-          producer
+          producer_settings
       end
+
+    processor = Map.get(options, :processor, [])
 
     context =
       options
@@ -85,7 +91,7 @@ defmodule SpiderMan.Component.Builder do
 
     [
       name: process_name(spider, component),
-      producer: producer,
+      producer: producer_settings,
       processors: [default: processor],
       batchers: Map.get(options, :batchers, []),
       context: context

@@ -1,7 +1,7 @@
 defmodule SpiderMan.SpiderTest do
   use ExUnit.Case, async: true
   import ExUnit.CaptureLog
-  alias SpiderMan.{Engine, CommonSpider, Requester.JustReturn, Pipeline, Storage, Utils}
+  alias SpiderMan.{Engine, CommonSpider, Requester.JustReturn, Pipeline, Storage, Utils, Producer}
 
   setup_all do
     spider = SpiderTest
@@ -149,19 +149,25 @@ defmodule SpiderMan.SpiderTest do
         %{requests: [request], items: [item]}
     end
 
+    producer = {Producer.ETS, [retry_interval: retry_interval]}
+
     settings = [
       downloader_options: [
+        producer: producer,
         rate_limiting: nil,
         pipelines: pipelines,
         processor: processor,
-        retry_interval: retry_interval,
         requester: JustReturn
       ],
-      spider_options: [pipelines: pipelines, processor: processor, retry_interval: retry_interval],
+      spider_options: [
+        producer: producer,
+        pipelines: pipelines,
+        processor: processor
+      ],
       item_processor_options: [
+        producer: producer,
         pipelines: pipelines,
         processor: processor,
-        retry_interval: retry_interval,
         batchers: []
       ]
     ]

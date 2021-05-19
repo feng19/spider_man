@@ -1,10 +1,10 @@
 defmodule SpiderMan.Configuration do
   @moduledoc false
-  alias SpiderMan.Utils
-  alias SpiderMan.Pipeline.DuplicateFilter
+  alias SpiderMan.{Utils, Pipeline.DuplicateFilter, Producer}
 
   @default_settings [
     downloader_options: [
+      producer: Producer.ETS,
       processor: [max_demand: 1],
       rate_limiting: [allowed_messages: 10, interval: 1000],
       pipelines: [DuplicateFilter],
@@ -12,12 +12,14 @@ defmodule SpiderMan.Configuration do
       context: %{}
     ],
     spider_options: [
+      producer: Producer.ETS,
       processor: [max_demand: 1],
       pipelines: [],
       post_pipelines: [],
       context: %{}
     ],
     item_processor_options: [
+      producer: Producer.ETS,
       storage: SpiderMan.Storage.JsonLines,
       pipelines: [DuplicateFilter],
       post_pipelines: [],
@@ -161,14 +163,12 @@ defmodule SpiderMan.Configuration do
       end
 
     [
+      producer: [type: {:or, [:atom, :mod_arg]}, default: Producer.ETS],
       context: [type: :any, default: %{}],
       processor: processor_spec,
       rate_limiting: rate_limiting_spec,
       pipelines: pipelines_spec,
-      post_pipelines: post_pipelines_spec,
-      buffer_size: [type: :pos_integer],
-      buffer_keep: [type: :pos_integer],
-      retry_interval: [type: :pos_integer, default: 200]
+      post_pipelines: post_pipelines_spec
     ]
   end
 

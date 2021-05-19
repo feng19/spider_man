@@ -61,8 +61,20 @@ defmodule SpiderMan.Requester.DynamicFinch do
     finch_options = Keyword.put(finch_options, :middlewares, middlewares)
     sup_spec = {__MODULE__, %{spider: spider, options: finch_options, tid: tid}}
 
+    producer =
+      case Keyword.fetch!(downloader_options, :producer) do
+        {producer, producer_options} ->
+          producer_options =
+            Keyword.update(producer_options, :additional_specs, [sup_spec], &[sup_spec | &1])
+
+          {producer, producer_options}
+
+        producer ->
+          {producer, [additional_specs: [sup_spec]]}
+      end
+
     downloader_options
-    |> Keyword.update(:additional_specs, [sup_spec], &[sup_spec | &1])
+    |> Keyword.put(:producer, producer)
     |> Keyword.update(:context, context, &Map.merge(&1, context))
   end
 
