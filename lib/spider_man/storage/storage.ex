@@ -4,7 +4,7 @@ defmodule SpiderMan.Storage do
   @type storage_context :: map
 
   @callback store(batcher :: atom, items :: Enumerable.t(), storage_context) ::
-              [:ok] | [{:error, term}]
+              :ok | {:error, term} | [:ok] | [{:error, term}]
   @callback prepare_for_start(arg :: term, options) :: options when options: keyword
   @callback prepare_for_stop(options :: keyword) :: :ok
   @optional_callbacks prepare_for_start: 2, prepare_for_stop: 1

@@ -33,6 +33,7 @@ defmodule SpiderMan.MixProject do
       {:logger_file_backend, "~> 0.0.11"},
       {:nimble_options, "~> 0.3"},
       {:jason, "~> 1.2", optional: true},
+      {:nimble_csv, "~> 1.1", optional: true},
       {:hackney, "~> 1.7", optional: true},
       {:telemetry_metrics, "~> 0.6.0", optional: true}
     ]

@@ -22,11 +22,20 @@ defmodule SpiderMan.Component.ItemProcessor do
       }) do
     items = Stream.map(messages, & &1.data)
 
-    storage.store(batcher, items, storage_context)
-    |> Stream.zip(messages)
-    |> Enum.map(fn
-      {:ok, message} -> message
-      {{:error, reason}, message} -> Message.failed(message, reason)
-    end)
+    case storage.store(batcher, items, storage_context) do
+      :ok ->
+        messages
+
+      {:error, reason} ->
+        Enum.map(messages, &Message.failed(&1, reason))
+
+      enumerable ->
+        enumerable
+        |> Stream.zip(messages)
+        |> Enum.map(fn
+          {:ok, message} -> message
+          {{:error, reason}, message} -> Message.failed(message, reason)
+        end)
+    end
   end
 end
