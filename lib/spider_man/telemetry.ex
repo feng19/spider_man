@@ -15,8 +15,8 @@ if Code.ensure_loaded?(Telemetry.Metrics) do
 
       [
         # spider_man
-        summary("spider_man.ets.memory", unit: {:byte, :kilobyte}, tags: [:name, :component]),
-        summary("spider_man.ets.size", tags: [:name, :component]),
+        summary("spider_man.ets.memory", unit: {:byte, :kilobyte}, tags: [:name, :tid]),
+        summary("spider_man.ets.size", tags: [:name, :tid]),
         # broadway
         counter("broadway.processor.message.start.time", metric_options),
         counter("broadway.processor.message.stop.time", metric_options),

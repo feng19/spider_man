@@ -27,8 +27,6 @@ defmodule SpiderMan do
   @type ets_stats :: [size: pos_integer, memory: pos_integer] | nil
   @type prepare_for_start_stage :: :pre | :post
 
-  @components [:downloader, :spider, :item_processor]
-
   @callback handle_response(Response.t(), context :: map) :: %{
               optional(:requests) => [Request.t()],
               optional(:items) => [Item.t()]
@@ -140,6 +138,24 @@ defmodule SpiderMan do
     [{:status, Engine.status(spider)} | components]
   end
 
+  @doc "fetch spider's statistics of all ets"
+  @spec ets_stats(spider) :: [
+          common_pipeline_tid: ets_stats,
+          downloader_tid: ets_stats,
+          failed_tid: ets_stats,
+          spider_tid: ets_stats,
+          item_processor_tid: ets_stats
+        ]
+  def ets_stats(spider) do
+    :persistent_term.get(spider)
+    |> Enum.map(fn {key, tid} ->
+      {key,
+       tid
+       |> :ets.info()
+       |> Keyword.take([:size, :memory])}
+    end)
+  end
+
   @doc "fetch component's statistics"
   @spec stats(spider, component) :: ets_stats
   def stats(spider, component) do
@@ -167,9 +183,10 @@ defmodule SpiderMan do
   def telemetry_execute(spider) do
     name = inspect(spider)
 
-    Enum.each(@components, fn component ->
-      measurements = stats(spider, component) |> Map.new()
-      :telemetry.execute([:spider_man, :ets], measurements, %{name: name, component: component})
+    spider
+    |> ets_stats()
+    |> Enum.each(fn {tid, measurements} ->
+      :telemetry.execute([:spider_man, :ets], Map.new(measurements), %{name: name, tid: tid})
     end)
   catch
     _, _ -> :ok
