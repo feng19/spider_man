@@ -8,7 +8,7 @@ defmodule SpiderMan.Pipeline do
   @type t :: module | {module, function_name :: atom()} | mfa | (term -> call_return)
 
   @callback call(event, arg) :: call_return
-  @callback prepare_for_start(arg, options) :: {arg, options} when options: map
+  @callback prepare_for_start(arg, options) :: {arg, options} when options: keyword
   @callback prepare_for_stop(arg) :: :ok
   @optional_callbacks call: 2, prepare_for_start: 2, prepare_for_stop: 1
 

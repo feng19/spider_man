@@ -250,15 +250,7 @@ defmodule SpiderMan.Engine do
     @components
     |> Enum.zip([state.downloader_options, state.spider_options, state.item_processor_options])
     |> Enum.each(fn {component, options} ->
-      prepare_for_stop_component(component, options, spider_module)
-      Logger.info("#{log_prefix} #{component} component prepare_for_stop finish.")
-
-      if options do
-        options |> Keyword.fetch!(:pipelines) |> Pipeline.prepare_for_stop()
-        options |> Keyword.fetch!(:post_pipelines) |> Pipeline.prepare_for_stop()
-      end
-
-      Logger.info("#{log_prefix} #{component} component pipelines prepare_for_stop finish.")
+      prepare_for_stop_component(component, options, spider_module, log_prefix)
     end)
 
     Logger.log(level, "#{log_prefix} components prepare_for_stop finish.")
@@ -282,18 +274,56 @@ defmodule SpiderMan.Engine do
   defp reason_to_signal(:killed), do: :kill
   defp reason_to_signal(other), do: other
 
-  defp prepare_for_start_component(options, component, spider_module) do
-    if function_exported?(spider_module, :prepare_for_start_component, 2) do
-      spider_module.prepare_for_start_component(component, options)
-    else
-      options
-    end
+  defp prepare_for_start_component(options, component, spider_module, log_prefix) do
+    options =
+      if options do
+        {pipelines, options} = Pipeline.prepare_for_start(options[:pipelines], options)
+        {post_pipelines, options} = Pipeline.prepare_for_start(options[:post_pipelines], options)
+
+        Logger.info(
+          "#{log_prefix} #{component} component pipelines setup prepare_for_start finish."
+        )
+
+        context =
+          Map.merge(options[:context], %{pipelines: pipelines, post_pipelines: post_pipelines})
+
+        Keyword.put(options, :context, context)
+      else
+        options
+      end
+
+    options =
+      if function_exported?(spider_module, :prepare_for_start_component, 2) do
+        options = spider_module.prepare_for_start_component(component, options)
+
+        Logger.info(
+          "#{log_prefix} setup #{component} component prepare_for_start_component finish."
+        )
+
+        options
+      else
+        options
+      end
+      |> SpiderMan.Producer.prepare_for_start_producer()
+
+    Logger.info("#{log_prefix} #{component} component prepare_for_start finish.")
+    options
   end
 
-  defp prepare_for_stop_component(component, options, spider_module) do
+  defp prepare_for_stop_component(component, options, spider_module, log_prefix) do
+    if options do
+      options |> Keyword.fetch!(:pipelines) |> Pipeline.prepare_for_stop()
+      options |> Keyword.fetch!(:post_pipelines) |> Pipeline.prepare_for_stop()
+    end
+
+    Logger.info("#{log_prefix} #{component} component pipelines prepare_for_stop finish.")
+
     if function_exported?(spider_module, :prepare_for_stop_component, 2) do
       spider_module.prepare_for_stop_component(component, options)
+      Logger.info("#{log_prefix} #{component} component prepare_for_stop_component finish.")
     end
+
+    Logger.info("#{log_prefix} #{component} component prepare_for_stop finish.")
   end
 
   defp call_producers(state, msg) do
@@ -349,21 +379,21 @@ defmodule SpiderMan.Engine do
 
   defp do_setup_ets_tables(state) do
     # new ets tables
-    ets_options = [:set, :public, write_concurrency: true]
-    pipeline_ets_options = [:set, :public, write_concurrency: true, read_concurrency: true]
+    producer_ets_options = [:set, :public, write_concurrency: true]
+    ets_options = [:set, :public, write_concurrency: true, read_concurrency: true]
 
     ets_tables = %{
       # common ets
-      failed_tid: :ets.new(:failed, pipeline_ets_options),
-      common_pipeline_tid: :ets.new(:common_pipeline, pipeline_ets_options),
+      failed_tid: :ets.new(:failed, ets_options),
+      common_pipeline_tid: :ets.new(:common_pipeline, ets_options),
       # producer ets
-      downloader_tid: :ets.new(:downloader, ets_options),
-      spider_tid: :ets.new(:spider, ets_options),
-      item_processor_tid: :ets.new(:item_processor, ets_options),
+      downloader_tid: :ets.new(:downloader, producer_ets_options),
+      spider_tid: :ets.new(:spider, producer_ets_options),
+      item_processor_tid: :ets.new(:item_processor, producer_ets_options),
       # pipeline ets
-      downloader_pipeline_tid: :ets.new(:downloader_pipeline, pipeline_ets_options),
-      spider_pipeline_tid: :ets.new(:spider_pipeline, pipeline_ets_options),
-      item_processor_pipeline_tid: :ets.new(:item_processor_pipeline, pipeline_ets_options)
+      downloader_pipeline_tid: :ets.new(:downloader_pipeline, ets_options),
+      spider_pipeline_tid: :ets.new(:spider_pipeline, ets_options),
+      item_processor_pipeline_tid: :ets.new(:item_processor_pipeline, ets_options)
     }
 
     Map.merge(state, ets_tables)
@@ -426,7 +456,7 @@ defmodule SpiderMan.Engine do
       |> Kernel.++(broadway_base_options)
       |> Kernel.++(state.downloader_options)
       |> Requester.prepare_for_start()
-      |> prepare_for_start_component(:downloader, spider_module)
+      |> prepare_for_start_component(:downloader, spider_module, log_prefix)
 
     spider_options =
       [
@@ -437,18 +467,19 @@ defmodule SpiderMan.Engine do
       ]
       |> Kernel.++(broadway_base_options)
       |> Kernel.++(state.spider_options)
-      |> prepare_for_start_component(:spider, spider_module)
+      |> prepare_for_start_component(:spider, spider_module, log_prefix)
 
     item_processor_options =
       [
         component: :item_processor,
         tid: item_processor_tid,
+        next_tid: nil,
         pipeline_tid: item_processor_pipeline_tid
       ]
       |> Kernel.++(broadway_base_options)
       |> Kernel.++(state.item_processor_options)
       |> Storage.prepare_for_start()
-      |> prepare_for_start_component(:item_processor, spider_module)
+      |> prepare_for_start_component(:item_processor, spider_module, log_prefix)
 
     Logger.info("#{log_prefix} setup components prepare_for_start finish.")
 

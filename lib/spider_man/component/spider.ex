@@ -1,13 +1,13 @@
 defmodule SpiderMan.Component.Spider do
   @moduledoc false
-  use SpiderMan.Component.Builder
+  use SpiderMan.Component
   require Logger
   alias Broadway.Message
   alias SpiderMan.{Pipeline, Utils}
 
   @impl true
-  def handle_message(_processor, message, %{spider: spider} = context) do
-    case Pipeline.call(context.pipelines, message.data, spider) do
+  def handle_message(_processor, message, %{spider: spider, pipelines: pipelines} = context) do
+    case Pipeline.call(pipelines, message.data, spider) do
       response when is_struct(response) ->
         spider_module = context.spider_module
 
@@ -23,8 +23,7 @@ defmodule SpiderMan.Component.Spider do
             end
 
             items = Map.get(return, :items, [])
-            # push successful events to next_tid
-            Utils.push_events_to_next_producer_ets(context.next_tid, context.tid, items)
+            Utils.push_to_next_producer(context, items)
 
             %{message | data: :ok}
 

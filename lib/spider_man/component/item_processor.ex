@@ -1,13 +1,13 @@
 defmodule SpiderMan.Component.ItemProcessor do
   @moduledoc false
-  use SpiderMan.Component.Builder
+  use SpiderMan.Component
   require Logger
   alias Broadway.Message
   alias SpiderMan.Pipeline
 
   @impl true
-  def handle_message(_processor, message, %{spider: spider} = context) do
-    case Pipeline.call(context.pipelines, message.data, spider) do
+  def handle_message(_processor, message, %{spider: spider, pipelines: pipelines}) do
+    case Pipeline.call(pipelines, message.data, spider) do
       :skiped -> Message.failed(message, :skiped)
       {:error, reason} -> Message.failed(message, reason)
       {batcher, item} -> %{message | data: item, batcher: batcher}

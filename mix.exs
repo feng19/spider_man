@@ -35,7 +35,7 @@ defmodule SpiderMan.MixProject do
       {:jason, "~> 1.2", optional: true},
       {:nimble_csv, "~> 1.1", optional: true},
       {:hackney, "~> 1.7", optional: true},
-      {:telemetry_metrics, "~> 0.6.0", optional: true}
+      {:telemetry_metrics, "~> 0.6", optional: true}
     ]
   end
 

@@ -53,7 +53,7 @@ defmodule SpiderMan.Utils do
     GenStage.call(producer_name, msg)
   end
 
-  def push_events_to_next_producer_ets(next_tid, tid, events) do
+  def push_to_next_producer(%{next_tid: next_tid, tid: tid}, events) do
     events
     |> Enum.flat_map(fn
       list when is_list(list) ->

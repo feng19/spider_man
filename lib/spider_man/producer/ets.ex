@@ -2,11 +2,40 @@ defmodule SpiderMan.Producer.ETS do
   @moduledoc false
   use GenStage
   require Logger
-  alias Broadway.Producer
+  alias Broadway.{Producer, Message, Acknowledger}
 
+  @behaviour SpiderMan.Producer
   @behaviour Producer
+  @behaviour Acknowledger
 
-  @impl true
+  @impl SpiderMan.Producer
+  def producer_settings(producer_options, options) do
+    default_producer_options = Keyword.take(options, [:tid, :status])
+
+    producer_options =
+      if is_list(producer_options) do
+        producer_options ++ default_producer_options
+      else
+        default_producer_options
+      end
+
+    ack_info = Keyword.take(options, [:tid, :failed_tid, :component]) |> Map.new()
+
+    producer_settings = [
+      module: {__MODULE__, producer_options},
+      transformer: {__MODULE__, :transform, [ack_info]}
+    ]
+
+    context =
+      Map.merge(
+        options[:context],
+        Keyword.take(options, [:tid, :next_tid, :spider, :spider_module]) |> Map.new()
+      )
+
+    {producer_settings, Keyword.put(options, :context, context)}
+  end
+
+  @impl GenStage
   def init(opts) do
     {gen_stage_opts, opts} = Keyword.split(opts, [:buffer_size, :buffer_keep])
     tid = Keyword.fetch!(opts, :tid)
@@ -31,17 +60,17 @@ defmodule SpiderMan.Producer.ETS do
     {:producer, state, gen_stage_opts}
   end
 
-  @impl true
+  @impl GenStage
   def handle_demand(incoming_demand, state) do
     handle_get_messages(%{state | demand: state.demand + incoming_demand})
   end
 
-  @impl true
+  @impl GenStage
   def handle_info(:retry_get_messages, state) do
     handle_get_messages(%{state | retry_timer: nil})
   end
 
-  @impl true
+  @impl GenStage
   def handle_call(:status, _from, state), do: {:reply, state.status, [], state}
 
   def handle_call(:suspend, _from, %{status: :running, retry_timer: retry_timer} = state) do
@@ -63,8 +92,10 @@ defmodule SpiderMan.Producer.ETS do
     messages =
       case :ets.match_object(tid, :_, demand) do
         {messages, _} ->
-          Enum.each(messages, &:ets.delete_object(tid, &1))
-          messages
+          Enum.map(messages, fn {_key, data} = object ->
+            :ets.delete_object(tid, object)
+            data
+          end)
 
         :"$end_of_table" ->
           []
@@ -103,5 +134,33 @@ defmodule SpiderMan.Producer.ETS do
   @compile {:inline, start_timer: 1}
   defp start_timer(interval) do
     Process.send_after(self(), :retry_get_messages, interval)
+  end
+
+  def transform(data, [ack_info]) do
+    %Message{
+      data: data,
+      acknowledger: {__MODULE__, ack_info, nil}
+    }
+  end
+
+  @impl Acknowledger
+  def ack(%{tid: tid, failed_tid: failed_tid, component: component}, _successful, failed) do
+    {events, failed_events} =
+      failed
+      |> Stream.reject(&match?({:failed, :skiped}, &1.status))
+      |> Stream.map(& &1.data)
+      |> Enum.split_with(&(&1.retries > 0))
+
+    failed_objects = Enum.map(failed_events, &{{component, &1.key}, &1})
+    :ets.insert(failed_tid, failed_objects)
+
+    retry_events(events, tid)
+  end
+
+  defp retry_events([], _tid), do: :ok
+
+  defp retry_events(events, tid) do
+    objects = Enum.map(events, &{&1.key, &1})
+    :ets.insert(tid, objects)
   end
 end

@@ -109,8 +109,7 @@ defmodule SpiderMan.EngineTest do
     assert state.common_pipeline_tid == spider_options[:common_pipeline_tid]
     assert state.spider_pipeline_tid == spider_options[:pipeline_tid]
     assert [] = spider_options[:pipelines]
-    assert is_map(spider_options[:context])
-    assert Enum.empty?(spider_options[:context])
+    assert %{pipelines: [], post_pipelines: []} = spider_options[:context]
   end
 
   test "check item_processor_options", %{spider: spider} do

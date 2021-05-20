@@ -33,16 +33,12 @@ defmodule SpiderMan.CommonSpiderTest do
 
     # wrong callback - handle_response
     error_msg =
-      "Wrong type of handle_response: #{inspect(:wrong_type)} defined in :callbacks option when use #{
-        inspect(CommonSpider)
-      }, please use fun/2 for this option."
+      "Wrong type of handle_response: #{inspect(:wrong_type)} defined in :callbacks option when use #{inspect(CommonSpider)}, please use fun/2 for this option."
 
     assert {:error, ^error_msg} = CommonSpider.start(spider, handle_response: :wrong_type)
 
     error_msg =
-      "Wrong type of handle_response: #{inspect(wrong_fun)} defined in :callbacks option when use #{
-        inspect(CommonSpider)
-      }, please use fun/2 for this option."
+      "Wrong type of handle_response: #{inspect(wrong_fun)} defined in :callbacks option when use #{inspect(CommonSpider)}, please use fun/2 for this option."
 
     assert {:error, ^error_msg} = CommonSpider.start(spider, handle_response: wrong_fun)
 
@@ -79,9 +75,7 @@ defmodule SpiderMan.CommonSpiderTest do
 
              SpiderMan.stop(spider)
            end) =~
-             "Wrong type of #{to_string(key)}: :wrong_type defined in :callbacks option when use #{
-               inspect(CommonSpider)
-             }, please use fun/#{arity} for this option."
+             "Wrong type of #{to_string(key)}: :wrong_type defined in :callbacks option when use #{inspect(CommonSpider)}, please use fun/#{arity} for this option."
 
     assert capture_log([level: :warn], fn ->
              {:ok, _pid} =
@@ -92,9 +86,7 @@ defmodule SpiderMan.CommonSpiderTest do
 
              SpiderMan.stop(spider)
            end) =~
-             "Wrong type of #{to_string(key)}: #{inspect(wrong_fun)} defined in :callbacks option when use #{
-               inspect(CommonSpider)
-             }, please use fun/#{arity} for this option."
+             "Wrong type of #{to_string(key)}: #{inspect(wrong_fun)} defined in :callbacks option when use #{inspect(CommonSpider)}, please use fun/#{arity} for this option."
   end
 
   test "setup_callbacks", %{spider: spider} do

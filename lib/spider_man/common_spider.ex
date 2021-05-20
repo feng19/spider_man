@@ -92,9 +92,7 @@ defmodule SpiderMan.CommonSpider do
 
         {other, callbacks} ->
           Logger.warn(
-            "Wrong type of #{unquote(key)}: #{inspect(other)} defined in :callbacks option when use #{
-              inspect(__MODULE__)
-            }, please use fun/#{unquote(arity)} for this option."
+            "Wrong type of #{unquote(key)}: #{inspect(other)} defined in :callbacks option when use #{inspect(__MODULE__)}, please use fun/#{unquote(arity)} for this option."
           )
 
           callbacks
@@ -121,9 +119,7 @@ defmodule SpiderMan.CommonSpider do
 
       other ->
         {:error,
-         "Wrong type of handle_response: #{inspect(other)} defined in :callbacks option when use #{
-           inspect(__MODULE__)
-         }, please use fun/2 for this option."}
+         "Wrong type of handle_response: #{inspect(other)} defined in :callbacks option when use #{inspect(__MODULE__)}, please use fun/2 for this option."}
     end
   end
 
