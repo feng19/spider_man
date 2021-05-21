@@ -7,6 +7,15 @@ defmodule SpiderMan.Producer do
 
   def process_name(spider, component), do: :"#{spider}.#{Module.split(component) |> List.last()}"
 
+  def producer_status(broadway), do: call_producer(broadway, :status)
+
+  def call_producer(nil, _msg), do: :ok
+
+  def call_producer(broadway, msg) do
+    [producer_name] = Broadway.producer_names(broadway)
+    GenStage.call(producer_name, msg)
+  end
+
   def prepare_for_start_producer(false), do: false
 
   def prepare_for_start_producer(options),

@@ -10,7 +10,8 @@ defmodule SpiderMan.Engine do
     Pipeline,
     Requester,
     Storage,
-    Utils
+    Utils,
+    Producer
   }
 
   @type state :: map
@@ -138,7 +139,7 @@ defmodule SpiderMan.Engine do
     result =
       component
       |> get_component_pid(state)
-      |> Utils.call_producer(:suspend)
+      |> Producer.call_producer(:suspend)
 
     {:reply, result, state}
   end
@@ -155,7 +156,7 @@ defmodule SpiderMan.Engine do
     result =
       component
       |> get_component_pid(state)
-      |> Utils.call_producer(:continue)
+      |> Producer.call_producer(:continue)
 
     {:reply, result, state}
   end
@@ -304,7 +305,7 @@ defmodule SpiderMan.Engine do
       else
         options
       end
-      |> SpiderMan.Producer.prepare_for_start_producer()
+      |> Producer.prepare_for_start_producer()
 
     Logger.info("#{log_prefix} #{component} component prepare_for_start finish.")
     options
@@ -329,7 +330,7 @@ defmodule SpiderMan.Engine do
   defp call_producers(state, msg) do
     Enum.map(
       [state.downloader_pid, state.spider_pid, state.item_processor_pid],
-      &Utils.call_producer(&1, msg)
+      &Producer.call_producer(&1, msg)
     )
   end
 

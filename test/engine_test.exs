@@ -9,7 +9,8 @@ defmodule SpiderMan.EngineTest do
     Item,
     Utils,
     Requester.JustReturn,
-    Pipeline
+    Pipeline,
+    Producer
   }
 
   setup_all do
@@ -217,9 +218,9 @@ defmodule SpiderMan.EngineTest do
       [downloader: downloader_pid, spider: spider_pid, item_processor: item_processor_pid],
       fn {component, pid} ->
         assert :ok = Engine.suspend_component(spider, component)
-        assert :suspended = Utils.producer_status(pid)
+        assert :suspended = Producer.producer_status(pid)
         assert :ok = Engine.continue_component(spider, component)
-        assert :running = Utils.producer_status(pid)
+        assert :running = Producer.producer_status(pid)
       end
     )
   end
@@ -238,7 +239,7 @@ defmodule SpiderMan.EngineTest do
 
     Enum.each(
       [downloader_pid, spider_pid, item_processor_pid],
-      &assert(:suspended = Utils.producer_status(&1))
+      &assert(:suspended = Producer.producer_status(&1))
     )
 
     :ok = SpiderMan.continue(spider)
@@ -246,7 +247,7 @@ defmodule SpiderMan.EngineTest do
 
     Enum.each(
       [downloader_pid, spider_pid, item_processor_pid],
-      fn pid -> assert :running = Utils.producer_status(pid) end
+      fn pid -> assert :running = Producer.producer_status(pid) end
     )
   end
 

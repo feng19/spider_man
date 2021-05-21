@@ -3,7 +3,7 @@ defmodule SpiderMan.Component.Downloader do
   use SpiderMan.Component
   require Logger
   alias Broadway.Message
-  alias SpiderMan.{Response, Pipeline, Utils}
+  alias SpiderMan.{Response, Pipeline, Component}
 
   @impl true
   def handle_message(_processor, message, %{spider: spider, pipelines: pipelines} = context) do
@@ -12,7 +12,7 @@ defmodule SpiderMan.Component.Downloader do
          {:ok, env} <- context.requester.request(url, options, context),
          %{env: env} <-
            Pipeline.call(context.post_pipelines, %{request: request, env: env}, spider) do
-      Utils.push_to_next_producer(context, [
+      Component.push_to_next_component(context, [
         %Response{key: request.key, env: env, flag: request.flag}
       ])
 

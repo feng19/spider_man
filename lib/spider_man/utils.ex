@@ -44,30 +44,6 @@ defmodule SpiderMan.Utils do
     end)
   end
 
-  def producer_status(broadway), do: call_producer(broadway, :status)
-
-  def call_producer(nil, _msg), do: :ok
-
-  def call_producer(broadway, msg) do
-    [producer_name] = Broadway.producer_names(broadway)
-    GenStage.call(producer_name, msg)
-  end
-
-  def push_to_next_producer(%{next_tid: next_tid, tid: tid}, events) do
-    events
-    |> Enum.flat_map(fn
-      list when is_list(list) ->
-        Enum.map(list, &{&1.key, %{&1 | options: [{:prev_tid, tid} | &1.options]}})
-
-      data ->
-        [{data.key, %{data | options: [{:prev_tid, tid} | data.options]}}]
-    end)
-    |> case do
-      [] -> :skip
-      events -> :ets.insert(next_tid, events)
-    end
-  end
-
   def ets_stream(table) do
     Stream.unfold(:ets.first(table), fn
       :"$end_of_table" ->
