@@ -5,7 +5,8 @@ defmodule SpiderMan.Storage do
 
   @callback store(batcher :: atom, items :: Enumerable.t(), storage_context) ::
               :ok | {:error, term} | [:ok] | [{:error, term}]
-  @callback prepare_for_start(arg :: term, options) :: options when options: keyword
+  @callback prepare_for_start(arg :: term, options) :: options | {storage_context, options}
+            when options: keyword
   @callback prepare_for_stop(options :: keyword) :: :ok
   @optional_callbacks prepare_for_start: 2, prepare_for_stop: 1
 
@@ -34,7 +35,7 @@ defmodule SpiderMan.Storage do
   defp prepare_for_start({storage, arg}, options) when is_atom(storage) do
     spider = Keyword.fetch!(options, :spider)
 
-    options =
+    {storage_context, options} =
       with {:module, _} <- Code.ensure_loaded(storage),
            true <- function_exported?(storage, :prepare_for_start, 2) do
         storage.prepare_for_start(arg, options)
@@ -42,10 +43,24 @@ defmodule SpiderMan.Storage do
         {:error, _} -> raise "Storage module: #{inspect(storage)} undefined."
         _ -> options
       end
+      |> case do
+        return = {storage_context, options} when is_map(storage_context) and is_list(options) ->
+          return
 
-    context = Keyword.get(options, :context, %{})
-    storage_context = Map.get(context, :storage_context, %{}) |> Map.put_new(:spider, spider)
-    context = Map.merge(context, %{storage: storage, storage_context: storage_context})
+        options when is_list(options) ->
+          context = Keyword.get(options, :context, %{})
+          storage_context = Map.get(context, :storage_context, %{})
+          {storage_context, options}
+
+        return ->
+          raise "Wrong value: #{inspect(return)} return by Storage: #{inspect(storage)}."
+      end
+
+    storage_context = Map.put_new(storage_context, :spider, spider)
+
+    context =
+      Keyword.get(options, :context, %{})
+      |> Map.merge(%{storage: storage, storage_context: storage_context})
 
     Keyword.merge(options, storage: storage, context: context)
   end

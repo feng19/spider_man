@@ -55,4 +55,7 @@ defmodule SpiderMan.Utils do
         {record, next_key}
     end)
   end
+
+  def get_file_path_by_spider(spider, suffix),
+    do: "data/#{inspect(spider)}_#{System.system_time(:second)}.#{suffix}"
 end

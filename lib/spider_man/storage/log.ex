@@ -4,9 +4,9 @@ defmodule SpiderMan.Storage.Log do
   @behaviour SpiderMan.Storage
 
   @impl true
-  def store(_, items, %{spider: spider}) do
+  def store(_batcher, items, _context) do
     Enum.map(items, fn item ->
-      Logger.info(">> store item: #{inspect(item)}", spider: spider)
+      Logger.info(">> store item: #{inspect(item)}")
       :ok
     end)
   end

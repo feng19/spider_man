@@ -3,8 +3,8 @@ defmodule SpiderMan.Pipeline.Debug do
   @behaviour SpiderMan.Pipeline
 
   @impl true
-  def call(data, %{spider: spider, component: component, log_prefix: log_prefix}) do
-    Logger.debug("#{log_prefix} #{component} get message: #{inspect(data)}", spider: spider)
+  def call(data, %{component: component, log_prefix: log_prefix}) do
+    Logger.debug("#{log_prefix} #{component} get message: #{inspect(data)}")
     data
   end
 
@@ -17,6 +17,6 @@ defmodule SpiderMan.Pipeline.Debug do
         ""
       end
 
-    {%{spider: options[:spider], component: options[:component], log_prefix: log_prefix}, options}
+    {%{component: options[:component], log_prefix: log_prefix}, options}
   end
 end

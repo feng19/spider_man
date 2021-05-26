@@ -7,11 +7,11 @@ defmodule SpiderMan.Component.Downloader do
 
   @impl true
   def handle_message(_processor, message, %{spider: spider, pipelines: pipelines} = context) do
-    with %{url: url, options: options} = request <-
-           Pipeline.call(pipelines, message.data, spider),
+    Logger.metadata(spider: spider)
+
+    with %{url: url, options: options} = request <- Pipeline.call(pipelines, message.data),
          {:ok, env} <- context.requester.request(url, options, context),
-         %{env: env} <-
-           Pipeline.call(context.post_pipelines, %{request: request, env: env}, spider) do
+         %{env: env} <- Pipeline.call(context.post_pipelines, %{request: request, env: env}) do
       Component.push_to_next_component(context, [
         %Response{key: request.key, env: env, flag: request.flag}
       ])

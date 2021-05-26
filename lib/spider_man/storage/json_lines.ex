@@ -1,6 +1,5 @@
 defmodule SpiderMan.Storage.JsonLines do
   @moduledoc false
-  require Logger
   @behaviour SpiderMan.Storage
 
   @impl true
@@ -21,18 +20,16 @@ defmodule SpiderMan.Storage.JsonLines do
       raise "Please add Jason lib to your deps."
     end
 
-    dir = Path.dirname(file_path)
-    File.mkdir_p!(dir)
+    file_path |> Path.dirname() |> File.mkdir_p!()
 
     case File.open(file_path, [:write, :append, :binary]) do
       {:ok, io_device} ->
-        storage_context = %{io_device: io_device, file_path: file_path}
-
-        context =
+        storage_context =
           Keyword.get(options, :context, %{})
-          |> Map.update(:storage_context, storage_context, &Map.merge(&1, storage_context))
+          |> Map.get(:storage_context, %{})
+          |> Map.merge(%{io_device: io_device, file_path: file_path})
 
-        Keyword.put(options, :context, context)
+        {storage_context, options}
 
       error ->
         raise "Can't open file: #{file_path} with error: #{inspect(error)}."

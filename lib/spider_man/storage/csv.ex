@@ -1,7 +1,7 @@
 defmodule SpiderMan.Storage.CSV do
   @moduledoc false
-  require Logger
   @behaviour SpiderMan.Storage
+  alias SpiderMan.Utils
 
   @impl true
   def store(_, items, %{io_device: io_device, keys: keys}) do
@@ -15,7 +15,10 @@ defmodule SpiderMan.Storage.CSV do
 
   @impl true
   def prepare_for_start(headers, options) when is_list(headers) do
-    file_path = get_file_path_by_spider(options)
+    file_path =
+      Keyword.fetch!(options, :spider)
+      |> Utils.get_file_path_by_spider("csv")
+
     prepare_for_start({file_path, headers}, options)
   end
 
@@ -25,8 +28,7 @@ defmodule SpiderMan.Storage.CSV do
       raise "Please add NimbleCSV lib to your deps."
     end
 
-    dir = Path.dirname(file_path)
-    File.mkdir_p!(dir)
+    file_path |> Path.dirname() |> File.mkdir_p!()
 
     {keys, headers} =
       Stream.map(headers, fn
@@ -49,22 +51,17 @@ defmodule SpiderMan.Storage.CSV do
         # headers line
         iodata = NimbleCSV.RFC4180.dump_to_iodata([headers])
         :ok = IO.write(io_device, iodata)
-        storage_context = %{io_device: io_device, file_path: file_path, keys: keys}
 
-        context =
+        storage_context =
           Keyword.get(options, :context, %{})
-          |> Map.update(:storage_context, storage_context, &Map.merge(&1, storage_context))
+          |> Map.get(:storage_context, %{})
+          |> Map.merge(%{io_device: io_device, file_path: file_path, keys: keys})
 
-        Keyword.put(options, :context, context)
+        {storage_context, options}
 
       error ->
         raise "Can't open file: #{file_path} with error: #{inspect(error)}."
     end
-  end
-
-  defp get_file_path_by_spider(options) do
-    spider = Keyword.fetch!(options, :spider)
-    "data/#{inspect(spider)}_#{System.system_time(:second)}.csv"
   end
 
   @impl true

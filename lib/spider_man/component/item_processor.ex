@@ -7,7 +7,9 @@ defmodule SpiderMan.Component.ItemProcessor do
 
   @impl true
   def handle_message(_processor, message, %{spider: spider, pipelines: pipelines}) do
-    case Pipeline.call(pipelines, message.data, spider) do
+    Logger.metadata(spider: spider)
+
+    case Pipeline.call(pipelines, message.data) do
       :skiped -> Message.failed(message, :skiped)
       {:error, reason} -> Message.failed(message, reason)
       {batcher, item} -> %{message | data: item, batcher: batcher}
@@ -17,9 +19,11 @@ defmodule SpiderMan.Component.ItemProcessor do
 
   @impl true
   def handle_batch(batcher, messages, _batch_info, %{
+        spider: spider,
         storage: storage,
         storage_context: storage_context
       }) do
+    Logger.metadata(spider: spider)
     items = Stream.map(messages, & &1.data)
 
     case storage.store(batcher, items, storage_context) do

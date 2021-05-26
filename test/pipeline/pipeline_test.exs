@@ -73,33 +73,32 @@ defmodule SpiderMan.PipelineTest do
   end
 
   test "call/2" do
-    spider = PipelineTest
     add_one_fun_1 = &(&1 + 1)
     add_one_fun_2 = {&(&1 + &2), 1}
     module = SpiderMan.Pipeline.JsonEncode
 
     # empty pipelines
     pipelines = []
-    assert [] = Pipeline.call(pipelines, [], spider)
+    assert [] = Pipeline.call(pipelines, [])
 
     # fun/1
     pipelines = [add_one_fun_1]
-    assert 1 = Pipeline.call(pipelines, 0, spider)
+    assert 1 = Pipeline.call(pipelines, 0)
     pipelines = [add_one_fun_1, add_one_fun_1]
-    assert 2 = Pipeline.call(pipelines, 0, spider)
+    assert 2 = Pipeline.call(pipelines, 0)
 
     # fun/2 by {fun, arg}
     pipelines = [add_one_fun_2]
-    assert 1 = Pipeline.call(pipelines, 0, spider)
+    assert 1 = Pipeline.call(pipelines, 0)
     pipelines = [add_one_fun_2, add_one_fun_2]
-    assert 2 = Pipeline.call(pipelines, 0, spider)
+    assert 2 = Pipeline.call(pipelines, 0)
 
     # {m, f, arg}
     pipelines = [{module, :call, []}]
     item = %SpiderMan.Item{key: 1, value: %{test: 1}}
-    assert ~S|{"test":1}| = Pipeline.call(pipelines, item, spider)
+    assert ~S|{"test":1}| = Pipeline.call(pipelines, item)
     pipelines = [{module, :call, [pretty: true]}]
-    assert "{\n  \"test\": 1\n}" = Pipeline.call(pipelines, item, spider)
+    assert "{\n  \"test\": 1\n}" = Pipeline.call(pipelines, item)
 
     pipelines = [
       &(&1 + 1),
@@ -108,29 +107,29 @@ defmodule SpiderMan.PipelineTest do
       {module, :call, []}
     ]
 
-    assert "2" = Pipeline.call(pipelines, 0, spider)
+    assert "2" = Pipeline.call(pipelines, 0)
 
     # exit
     assert capture_log([level: :error], fn ->
              pipelines = [fn _ -> exit(:normal) end]
-             assert {:error, :normal} = Pipeline.call(pipelines, 0, spider)
+             assert {:error, :normal} = Pipeline.call(pipelines, 0)
            end) =~ "(exit) normal"
 
     assert capture_log([level: :error], fn ->
              pipelines = [fn _ -> exit({:test, :reason}) end]
-             assert {:error, {:test, :reason}} = Pipeline.call(pipelines, 0, spider)
+             assert {:error, {:test, :reason}} = Pipeline.call(pipelines, 0)
            end) =~ "(exit) {:test, :reason}"
 
     # raise
     assert capture_log([level: :error], fn ->
              pipelines = [fn _ -> raise "test" end]
-             assert {:error, %RuntimeError{message: "test"}} = Pipeline.call(pipelines, 0, spider)
+             assert {:error, %RuntimeError{message: "test"}} = Pipeline.call(pipelines, 0)
            end) =~ "(RuntimeError) test"
 
     assert capture_log([level: :error], fn ->
              error = %ArgumentError{message: "reason"}
              pipelines = [fn _ -> raise ArgumentError, "reason" end]
-             assert {:error, ^error} = Pipeline.call(pipelines, 0, spider)
+             assert {:error, ^error} = Pipeline.call(pipelines, 0)
            end) =~ "(ArgumentError) reason"
   end
 

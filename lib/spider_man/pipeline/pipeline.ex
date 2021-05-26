@@ -12,11 +12,11 @@ defmodule SpiderMan.Pipeline do
   @callback prepare_for_stop(arg) :: :ok
   @optional_callbacks call: 2, prepare_for_start: 2, prepare_for_stop: 1
 
-  def call(pipelines, acc, spider) do
-    Enum.reduce_while(pipelines, acc, &do_call(&1, &2, spider))
+  def call(pipelines, acc) do
+    Enum.reduce_while(pipelines, acc, &do_call(&1, &2))
   end
 
-  defp do_call(pipeline, acc, spider) do
+  defp do_call(pipeline, acc) do
     case pipeline do
       {m, f, arg} -> apply(m, f, [acc, arg])
       {fun, arg} -> fun.(arg, acc)
@@ -29,11 +29,11 @@ defmodule SpiderMan.Pipeline do
     end
   rescue
     reason ->
-      Logger.error(Exception.format(:error, reason, __STACKTRACE__), spider: spider)
+      Logger.error(Exception.format(:error, reason, __STACKTRACE__))
       {:halt, {:error, reason}}
   catch
     error, reason ->
-      Logger.error(Exception.format(error, reason, __STACKTRACE__), spider: spider)
+      Logger.error(Exception.format(error, reason, __STACKTRACE__))
       {:halt, {:error, reason}}
   end
 
