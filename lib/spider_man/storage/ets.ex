@@ -19,7 +19,15 @@ defmodule SpiderMan.Storage.ETS do
   def prepare_for_start(file_path, options) when is_binary(file_path) do
     file_path |> Path.dirname() |> File.mkdir_p!()
 
-    tid = :ets.new(__MODULE__, [:set, :public, write_concurrency: true, read_concurrency: true])
+    tid =
+      if File.regular?(file_path) do
+        Logger.info("Loading ets from file: #{file_path} ...")
+        tid = Utils.setup_ets_from_file!(file_path)
+        Logger.info("Loading ets from file: #{file_path} finished.")
+        tid
+      else
+        :ets.new(__MODULE__, [:set, :public, write_concurrency: true, read_concurrency: true])
+      end
 
     storage_context =
       Keyword.get(options, :context, %{})
@@ -40,9 +48,8 @@ defmodule SpiderMan.Storage.ETS do
     context = options[:context]
     %{file_path: file_path, tid: tid} = context.storage_context
     Logger.notice("starting dump ets to file: #{file_path} ...")
-    file_name = String.to_charlist(file_path)
-    result = :ets.tab2file(tid, file_name, extended_info: [:md5sum], sync: true)
-    Logger.notice("dump ets to file: #{file_name} finished, result: #{inspect(result)}.")
+    result = Utils.dump_ets2file(tid, file_path)
+    Logger.notice("dump ets to file: #{file_path} finished, result: #{inspect(result)}.")
     :ets.delete(tid)
     :ok
   end

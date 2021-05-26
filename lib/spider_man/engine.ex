@@ -184,7 +184,12 @@ defmodule SpiderMan.Engine do
         {"spider_pipeline", state.spider_pipeline_tid},
         {"item_processor_pipeline", state.item_processor_pipeline_tid}
       ],
-      fn {name, tid} -> do_dump2file("#{file_name}_#{name}.ets", tid) end
+      fn {name, tid} ->
+        file_name = "#{file_name}_#{name}.ets"
+        Logger.notice("starting dump2file: #{file_name} ...")
+        result = Utils.dump_ets2file(tid, file_name)
+        Logger.notice("dump2file: #{file_name} finished, result: #{inspect(result)}.")
+      end
     )
 
     Logger.notice("#{log_prefix} dump2file: #{file_name}_*.ets finished.")
@@ -368,7 +373,10 @@ defmodule SpiderMan.Engine do
           item_processor_pipeline_tid: "item_processor_pipeline"
         ],
         fn {key, file_suffix} ->
-          tid = setup_ets_from_file!("#{file_name}_#{file_suffix}.ets", log_prefix)
+          file_name = "#{file_name}_#{file_suffix}.ets"
+          Logger.info("#{log_prefix} loading ets from file: #{file_name} ...")
+          tid = Utils.setup_ets_from_file!(file_name)
+          Logger.info("#{log_prefix} loading ets from file: #{file_name} finished.")
           {key, tid}
         end
       )
@@ -398,25 +406,6 @@ defmodule SpiderMan.Engine do
     }
 
     Map.merge(state, ets_tables)
-  end
-
-  defp do_dump2file(file_name, tid) do
-    Logger.notice("starting dump2file: #{file_name} ...")
-    file_name = String.to_charlist(file_name)
-    result = :ets.tab2file(tid, file_name, extended_info: [:md5sum], sync: true)
-    Logger.notice("dump2file: #{file_name} finished, result: #{inspect(result)}.")
-  end
-
-  defp setup_ets_from_file!(file_name, log_prefix) do
-    Logger.info("#{log_prefix} loading from file: #{file_name} ...")
-
-    file_name
-    |> String.to_charlist()
-    |> :ets.file2tab(verify: true)
-    |> case do
-      {:ok, tid} -> tid
-      {:error, error} -> raise "setup_ets_from_file: #{file_name} error: #{inspect(error)}"
-    end
   end
 
   defp setup_components(

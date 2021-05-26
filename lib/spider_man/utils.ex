@@ -58,4 +58,19 @@ defmodule SpiderMan.Utils do
 
   def get_file_path_by_spider(spider, suffix),
     do: "data/#{inspect(spider)}_#{System.system_time(:second)}.#{suffix}"
+
+  def dump_ets2file(tid, file_name) do
+    file_name = String.to_charlist(file_name)
+    :ets.tab2file(tid, file_name, extended_info: [:md5sum], sync: true)
+  end
+
+  def setup_ets_from_file!(file_name) do
+    file_name
+    |> String.to_charlist()
+    |> :ets.file2tab(verify: true)
+    |> case do
+      {:ok, tid} -> tid
+      {:error, error} -> raise "setup_ets_from_file: #{file_name} error: #{inspect(error)}"
+    end
+  end
 end
