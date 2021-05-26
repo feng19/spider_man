@@ -16,12 +16,6 @@ defmodule SpiderMan.Storage.ETS do
   end
 
   @impl true
-  def prepare_for_start(nil, options) do
-    Keyword.fetch!(options, :spider)
-    |> Utils.get_file_path_by_spider("ets")
-    |> prepare_for_start(options)
-  end
-
   def prepare_for_start(file_path, options) when is_binary(file_path) do
     file_path |> Path.dirname() |> File.mkdir_p!()
 
@@ -33,6 +27,12 @@ defmodule SpiderMan.Storage.ETS do
       |> Map.merge(%{file_path: file_path, tid: tid})
 
     {storage_context, options}
+  end
+
+  def prepare_for_start(_, options) do
+    Keyword.fetch!(options, :spider)
+    |> Utils.get_file_path_by_spider("ets")
+    |> prepare_for_start(options)
   end
 
   @impl true

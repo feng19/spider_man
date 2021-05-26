@@ -164,6 +164,40 @@ defmodule SpiderMan do
     end
   end
 
+  def run_until_zero(spider, settings \\ [], check_interval \\ 3000) do
+    run_until(spider, settings, fn ->
+      :persistent_term.get(spider)
+      |> Map.take([:downloader_tid, :failed_tid, :spider_tid])
+      |> Enum.all?(fn {_, tid} -> :ets.info(tid, :size) == 0 end)
+      |> case do
+        true -> :stop
+        _ -> check_interval
+      end
+    end)
+  end
+
+  def run_until(spider, settings \\ [], fun) when is_function(fun, 0) do
+    {:ok, _} = start(spider, settings)
+    Process.sleep(2000)
+    _run_until(fun)
+    stop(spider)
+  end
+
+  defp _run_until(fun) do
+    case fun.() do
+      :stop ->
+        :stop
+
+      sleep_time when is_integer(sleep_time) ->
+        Process.sleep(sleep_time)
+        _run_until(fun)
+
+      _ ->
+        Process.sleep(100)
+        _run_until(fun)
+    end
+  end
+
   @doc "list spiders where already started"
   @spec list_spiders :: [spider]
   def list_spiders do

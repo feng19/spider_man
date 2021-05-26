@@ -1,6 +1,7 @@
 defmodule SpiderMan.Storage.JsonLines do
   @moduledoc false
   @behaviour SpiderMan.Storage
+  alias SpiderMan.Utils
 
   @impl true
   def store(_, items, %{io_device: io_device}) do
@@ -37,8 +38,9 @@ defmodule SpiderMan.Storage.JsonLines do
   end
 
   def prepare_for_start(_, options) do
-    spider = Keyword.fetch!(options, :spider)
-    prepare_for_start("data/#{inspect(spider)}_#{System.system_time(:second)}.jsonl", options)
+    Keyword.fetch!(options, :spider)
+    |> Utils.get_file_path_by_spider("jsonl")
+    |> prepare_for_start(options)
   end
 
   @impl true
