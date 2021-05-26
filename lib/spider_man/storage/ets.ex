@@ -38,8 +38,12 @@ defmodule SpiderMan.Storage.ETS do
   @impl true
   def prepare_for_stop(options) do
     context = options[:context]
-    io_device = context.storage_context.io_device
-    :ok = File.close(io_device)
+    %{file_path: file_path, tid: tid} = context.storage_context
+    Logger.notice("starting dump ets to file: #{file_path} ...")
+    file_name = String.to_charlist(file_path)
+    result = :ets.tab2file(tid, file_name, extended_info: [:md5sum], sync: true)
+    Logger.notice("dump ets to file: #{file_name} finished, result: #{inspect(result)}.")
+    :ets.delete(tid)
     :ok
   end
 end
