@@ -10,31 +10,28 @@ defmodule SpiderMan.Component.Spider do
     Logger.metadata(spider: spider)
 
     case Pipeline.call(pipelines, message.data) do
-      response when is_struct(response) ->
-        spider_module = context.spider_module
+      response when is_struct(response) -> handle_response(response, message, context)
+      :skiped -> Message.failed(message, :skiped)
+      {:error, reason} -> Message.failed(message, reason)
+    end
+  end
 
-        case spider_module.handle_response(response, context) do
-          return when is_map(return) ->
-            case Map.get(return, :requests, []) do
-              [] ->
-                :skip
+  defp handle_response(response, message, %{spider_module: spider_module} = context) do
+    case spider_module.handle_response(response, context) do
+      return when is_map(return) ->
+        case Map.get(return, :requests, []) do
+          [] ->
+            :skip
 
-              requests when is_list(requests) ->
-                objects = Enum.map(requests, &{&1.key, &1})
-                :ets.insert(response.options[:prev_tid], objects)
-            end
-
-            items = Map.get(return, :items, [])
-            Component.push_to_next_component(context, items)
-
-            %{message | data: :ok}
-
-          {:error, reason} ->
-            Message.failed(message, reason)
+          requests when is_list(requests) ->
+            objects = Enum.map(requests, &{&1.key, &1})
+            :ets.insert(response.options[:prev_tid], objects)
         end
 
-      :skiped ->
-        Message.failed(message, :skiped)
+        items = Map.get(return, :items, [])
+        Component.push_to_next_component(context, items)
+
+        %{message | data: :ok}
 
       {:error, reason} ->
         Message.failed(message, reason)
