@@ -164,23 +164,37 @@ defmodule SpiderMan do
     end
   end
 
-  def run_until_zero(spider, settings \\ [], check_interval \\ 3000) do
+  @spec run_until_zero(spider, settings, check_interval :: integer) :: millisecond :: integer
+  def run_until_zero(spider, settings \\ [], check_interval \\ 1500) do
     run_until(spider, settings, fn ->
-      :persistent_term.get(spider)
-      |> Map.take([:downloader_tid, :failed_tid, :spider_tid])
-      |> Enum.all?(fn {_, tid} -> :ets.info(tid, :size) == 0 end)
-      |> case do
-        true -> :stop
-        _ -> check_interval
+      ets_list =
+        :persistent_term.get(spider)
+        |> Map.take([:downloader_tid, :failed_tid, :spider_tid])
+
+      fun = fn {_, tid} -> :ets.info(tid, :size) == 0 end
+
+      if Enum.all?(ets_list, fun) do
+        Process.sleep(check_interval)
+
+        if Enum.all?(ets_list, fun) do
+          :stop
+        else
+          check_interval
+        end
+      else
+        check_interval
       end
     end)
   end
 
+  @spec run_until(spider, settings, fun) :: millisecond :: integer
   def run_until(spider, settings \\ [], fun) when is_function(fun, 0) do
+    t1 = System.system_time(:millisecond)
     {:ok, _} = start(spider, settings)
-    Process.sleep(2000)
+    Process.sleep(1500)
     _run_until(fun)
-    stop(spider)
+    :ok = stop(spider)
+    System.system_time(:millisecond) - t1
   end
 
   defp _run_until(fun) do

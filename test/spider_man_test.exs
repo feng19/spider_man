@@ -79,8 +79,8 @@ defmodule SpiderMan.SpiderManTest do
 
   @tag spider_stopped: true
   test "run_until", %{spider: spider} do
-    assert {time, :ok} = :timer.tc(fn -> SpiderMan.run_until_zero(spider) end)
-    assert System.convert_time_unit(time, :microsecond, :second) >= 2
+    assert time = SpiderMan.run_until_zero(spider)
+    assert System.convert_time_unit(time, :millisecond, :second) >= 3
     assert Process.whereis(spider) |> is_nil()
   end
 end
