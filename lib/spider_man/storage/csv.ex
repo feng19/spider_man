@@ -14,18 +14,23 @@ defmodule SpiderMan.Storage.CSV do
   end
 
   @impl true
-  def prepare_for_start(headers, options) when is_list(headers) do
+  def prepare_for_start([headers: headers], options) when is_list(headers) do
     file_path =
       Keyword.fetch!(options, :spider)
       |> Utils.get_file_path_by_spider("csv")
 
-    prepare_for_start({file_path, headers}, options)
+    prepare_for_start([file: file_path, headers: headers], options)
   end
 
-  def prepare_for_start({file_path, headers}, options)
-      when is_binary(file_path) and is_list(headers) do
+  def prepare_for_start(arg, options) when is_list(arg) do
     unless Code.ensure_loaded?(NimbleCSV.RFC4180) do
       raise "Please add NimbleCSV lib to your deps."
+    end
+
+    %{file: file_path, headers: headers} = Map.new(arg)
+
+    unless is_binary(file_path) and is_list(headers) do
+      raise "Wrong type of file: #{inspect(file_path)} or headers: #{inspect(headers)} when using #{inspect(__MODULE__)}."
     end
 
     file_path |> Path.dirname() |> File.mkdir_p!()
