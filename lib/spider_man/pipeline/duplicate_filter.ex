@@ -4,24 +4,25 @@ defmodule SpiderMan.Pipeline.DuplicateFilter do
   @behaviour SpiderMan.Pipeline
 
   @impl true
-  def call(event, {tid, spider}) do
+  def call(event, tid) do
     if :ets.insert_new(tid, {{__MODULE__, event.key}, nil}) do
       event
     else
-      Logger.debug(">>> Remove event: #{inspect(event)} by #{inspect(__MODULE__)}.",
-        spider: spider
-      )
+      Logger.debug(">>> Remove event: #{inspect(event)} by #{inspect(__MODULE__)}.")
 
       :skiped
     end
   end
 
   @impl true
-  def prepare_for_start(:common, options) do
-    {{options[:common_pipeline_tid], options[:spider]}, options}
-  end
+  def prepare_for_start(arg, options) do
+    tid =
+      case arg do
+        :common -> options[:common_pipeline_tid]
+        [scope: :common] -> options[:common_pipeline_tid]
+        _ -> options[:pipeline_tid]
+      end
 
-  def prepare_for_start(_arg, options) do
-    {{options[:pipeline_tid], options[:spider]}, options}
+    {tid, options}
   end
 end

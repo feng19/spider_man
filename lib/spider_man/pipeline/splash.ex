@@ -3,7 +3,8 @@ defmodule SpiderMan.Pipeline.Splash do
   @behaviour SpiderMan.Pipeline
 
   @impl true
-  def call(event, {api_url, query}) do
+  def call(event, opts) do
+    %{url: api_url, query: query} = Map.new(opts)
     options = event.options
 
     url =

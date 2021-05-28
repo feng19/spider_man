@@ -8,14 +8,14 @@ defmodule SpiderMan.Pipeline.Counter do
   end
 
   @impl true
-  def prepare_for_start(:common, options) do
-    tid = options[:common_pipeline_tid]
-    :ets.insert(tid, {__MODULE__, 0})
-    {tid, options}
-  end
+  def prepare_for_start(arg, options) do
+    tid =
+      case arg do
+        :common -> options[:common_pipeline_tid]
+        [scope: :common] -> options[:common_pipeline_tid]
+        _ -> options[:pipeline_tid]
+      end
 
-  def prepare_for_start(_arg, options) do
-    tid = options[:pipeline_tid]
     :ets.insert(tid, {__MODULE__, 0})
     {tid, options}
   end

@@ -21,6 +21,12 @@ defmodule SpiderMan.Pipeline.JsonEncode2File do
       raise "Please add Jason lib to your deps."
     end
 
-    {arg, options}
+    dir =
+      case arg do
+        [dir: dir] -> dir
+        _ -> arg
+      end
+
+    {dir, options}
   end
 end

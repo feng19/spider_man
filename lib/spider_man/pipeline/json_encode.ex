@@ -13,6 +13,13 @@ defmodule SpiderMan.Pipeline.JsonEncode do
       raise "Please add Jason lib to your deps."
     end
 
-    {encode_opts || [], options}
+    encode_opts =
+      case encode_opts do
+        [encode_opts: encode_opts] -> encode_opts
+        opts when is_list(opts) -> opts
+        _ -> []
+      end
+
+    {encode_opts, options}
   end
 end
