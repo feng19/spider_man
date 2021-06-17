@@ -4,12 +4,14 @@ defmodule SpiderMan.MixProject do
   def project do
     [
       app: :spider_man,
+      description: "SpiderMan,a fast high-level web crawling & scraping framework for Elixir",
       version: "0.1.0",
       elixir: "~> 1.11",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
+      test_coverage: [ignore_modules: cover_ignore_modules()],
       deps: deps(),
-      test_coverage: [ignore_modules: cover_ignore_modules()]
+      package: package()
     ]
   end
 
@@ -50,6 +52,16 @@ defmodule SpiderMan.MixProject do
       SpiderManTest,
       EngineTest,
       Spider0
+    ]
+  end
+
+  defp package do
+    [
+      name: "spider_man",
+      files: ["lib", "mix.exs", "README.md", "LICENSE"],
+      maintainers: ["feng19"],
+      licenses: ["Apache-2.0"],
+      links: %{"GitHub" => "https://github.com/feng19/spider_man"}
     ]
   end
 end

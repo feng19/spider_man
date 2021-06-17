@@ -6,8 +6,7 @@ inspired by [Crawly](https://github.com/elixir-crawly/crawly)(Elixir) and [Scrap
 
 ## Installation
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `spider_man` to your list of dependencies in `mix.exs`:
+adding `spider_man` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
@@ -17,7 +16,6 @@ def deps do
 end
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/spider_man](https://hexdocs.pm/spider_man).
+## License
 
+`spider_man` source code is released under Apache 2 License. Check the [LICENSE](./LICENSE) file for more information.
