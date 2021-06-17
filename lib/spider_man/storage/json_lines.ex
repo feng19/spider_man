@@ -1,5 +1,5 @@
 defmodule SpiderMan.Storage.JsonLines do
-  @moduledoc false
+  @moduledoc "save items to JsonLines file"
   @behaviour SpiderMan.Storage
   alias SpiderMan.Utils
 

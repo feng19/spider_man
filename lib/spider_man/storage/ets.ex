@@ -1,5 +1,5 @@
 defmodule SpiderMan.Storage.ETS do
-  @moduledoc false
+  @moduledoc "save items to ets file"
   require Logger
   @behaviour SpiderMan.Storage
   alias SpiderMan.Utils

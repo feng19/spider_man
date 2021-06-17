@@ -1,5 +1,5 @@
 defmodule SpiderMan.Response do
-  @moduledoc false
+  @moduledoc "Response Struct"
   @enforce_keys [:key, :env]
   defstruct [:key, :env, :flag, options: [], retries: 0]
 

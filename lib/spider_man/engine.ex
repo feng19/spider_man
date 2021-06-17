@@ -1,5 +1,5 @@
 defmodule SpiderMan.Engine do
-  @moduledoc false
+  @moduledoc "Engine"
   use GenServer
   require Logger
 

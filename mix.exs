@@ -11,6 +11,7 @@ defmodule SpiderMan.MixProject do
       start_permanent: Mix.env() == :prod,
       test_coverage: [ignore_modules: cover_ignore_modules()],
       deps: deps(),
+      docs: docs(),
       package: package()
     ]
   end
@@ -37,7 +38,16 @@ defmodule SpiderMan.MixProject do
       {:jason, "~> 1.2", optional: true},
       {:nimble_csv, "~> 1.1", optional: true},
       {:hackney, "~> 1.7", optional: true},
-      {:telemetry_metrics, "~> 0.6", optional: true}
+      {:telemetry_metrics, "~> 0.6", optional: true},
+      {:ex_doc, "~> 0.22", only: [:docs, :dev], runtime: false}
+    ]
+  end
+
+  defp docs do
+    [
+      main: "readme",
+      formatter_opts: [gfm: true],
+      extras: ["README.md", "LICENSE"]
     ]
   end
 

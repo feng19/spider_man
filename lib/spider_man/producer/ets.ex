@@ -1,5 +1,5 @@
 defmodule SpiderMan.Producer.ETS do
-  @moduledoc false
+  @moduledoc "ETS Producer"
   use GenStage
   require Logger
   alias Broadway.{Producer, Message, Acknowledger}

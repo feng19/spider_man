@@ -1,5 +1,5 @@
 defmodule SpiderMan.Request do
-  @moduledoc false
+  @moduledoc "Request Struct"
   @enforce_keys [:key, :url]
   defstruct [:key, :url, :flag, options: [], retries: 0]
 

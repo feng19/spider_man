@@ -1,5 +1,5 @@
 defmodule SpiderMan.Item do
-  @moduledoc false
+  @moduledoc "Item Struct"
   @enforce_keys [:key, :value]
   defstruct [:key, :value, :flag, options: [], retries: 0]
 
