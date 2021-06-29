@@ -5,7 +5,7 @@ defmodule SpiderMan.MixProject do
     [
       app: :spider_man,
       description: "SpiderMan,a fast high-level web crawling & scraping framework for Elixir",
-      version: "0.1.1",
+      version: "0.1.2",
       elixir: "~> 1.11",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,

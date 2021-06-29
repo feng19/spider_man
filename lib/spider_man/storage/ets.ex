@@ -6,7 +6,12 @@ defmodule SpiderMan.Storage.ETS do
 
   @impl true
   def store(_batcher, items, %{tid: tid}) do
-    objects = Enum.map(items, & &1.value)
+    objects =
+      Enum.map(items, fn
+        %{value: value} when is_tuple(value) -> value
+        %{key: key, value: value} -> {key, value}
+      end)
+
     true = :ets.insert(tid, objects)
     :ok
   catch
