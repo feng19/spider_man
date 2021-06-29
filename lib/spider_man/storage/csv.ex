@@ -51,7 +51,7 @@ defmodule SpiderMan.Storage.CSV do
       end)
       |> Enum.unzip()
 
-    case File.open(file_path, [:write, :append, :binary]) do
+    case File.open(file_path, [:write, :append, :binary, :utf8]) do
       {:ok, io_device} ->
         # headers line
         iodata = NimbleCSV.RFC4180.dump_to_iodata([headers])

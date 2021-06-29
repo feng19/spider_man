@@ -23,7 +23,7 @@ defmodule SpiderMan.Storage.JsonLines do
 
     file_path |> Path.dirname() |> File.mkdir_p!()
 
-    case File.open(file_path, [:write, :append, :binary]) do
+    case File.open(file_path, [:write, :append, :binary, :utf8]) do
       {:ok, io_device} ->
         storage_context =
           Keyword.get(options, :context, %{})
