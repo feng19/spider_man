@@ -11,7 +11,7 @@ adding `spider_man` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:spider_man, "~> 0.1.0"}
+    {:spider_man, "~> 0.2"}
   ]
 end
 ```

@@ -10,6 +10,8 @@ defmodule SpiderMan.Storage do
   @callback prepare_for_stop(options :: keyword) :: :ok
   @optional_callbacks prepare_for_start: 2, prepare_for_stop: 1
 
+  alias SpiderMan.Storage.Multi
+
   def prepare_for_start(options) do
     case Keyword.get(options, :storage) do
       false ->
@@ -65,14 +67,55 @@ defmodule SpiderMan.Storage do
     Keyword.merge(options, storage: storage, context: context)
   end
 
+  defp prepare_for_start(storage_list, options) when is_list(storage_list) do
+    {storage_list, options} =
+      storage_list
+      |> Stream.filter(&(is_atom(&1) or match?({s, _} when is_atom(s), &1)))
+      |> Enum.map_reduce(options, fn storage, options ->
+        {context, options} =
+          prepare_for_start(storage, options)
+          |> Keyword.pop(:context)
+
+        {storage, context} = Map.pop(context, :storage)
+        {storage_context, context} = Map.pop(context, :storage_context)
+        options = Keyword.delete(options, :storage) |> Keyword.put(:context, context)
+        {%{storage: storage, storage_context: storage_context}, options}
+      end)
+
+    context =
+      Keyword.get(options, :context)
+      |> Map.merge(%{storage: Multi, storage_context: %{storage_list: storage_list}})
+
+    Keyword.merge(options, storage: Multi, context: context)
+  end
+
   defp prepare_for_start(nil, options), do: options
 
   def prepare_for_stop(false), do: :ok
 
   def prepare_for_stop(options) do
-    with storage when storage != nil <- Keyword.get(options, :storage),
-         true <- function_exported?(storage, :prepare_for_stop, 1) do
-      storage.prepare_for_stop(options)
+    case Keyword.get(options, :storage) do
+      nil ->
+        :skip
+
+      Multi ->
+        context = Keyword.get(options, :context)
+
+        Enum.each(
+          context.storage_context.storage_list,
+          fn %{storage: storage, storage_context: storage_context} ->
+            if function_exported?(storage, :prepare_for_stop, 1) do
+              context = Map.merge(context, %{storage: storage, storage_context: storage_context})
+              options = Keyword.merge(options, storage: storage, context: context)
+              storage.prepare_for_stop(options)
+            end
+          end
+        )
+
+      storage ->
+        if function_exported?(storage, :prepare_for_stop, 1) do
+          storage.prepare_for_stop(options)
+        end
     end
   end
 end
