@@ -3,8 +3,6 @@ defmodule SpiderMan.StorageTest do
   alias SpiderMan.{Storage, CommonSpider, Utils}
 
   setup_all do
-    File.rm_rf("data")
-    on_exit(fn -> File.rm_rf("data") end)
     [spider: StorageTest]
   end
 
@@ -12,7 +10,7 @@ defmodule SpiderMan.StorageTest do
   test "prepare_for start and stop", %{tmp_dir: tmp_dir, spider: spider} do
     # set file_path
     storage = Storage.JsonLines
-    file_path = Path.join(tmp_dir, "data_#{System.system_time(:second)}.jsonl")
+    file_path = Path.join(tmp_dir, "data_#{System.system_time(:millisecond)}.jsonl")
 
     options =
       Storage.prepare_for_start(

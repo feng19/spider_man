@@ -4,13 +4,17 @@ defmodule SpiderMan.Storage.CSV do
   alias SpiderMan.Utils
 
   @impl true
-  def store(_, items, %{io_device: io_device, keys: keys}) do
+  def store(_, items, %{io_device: io_device, header_keys: header_keys}) do
     iodata =
       Stream.map(items, & &1.value)
-      |> make_rows(keys)
+      |> Stream.map(&take(&1, header_keys))
       |> NimbleCSV.RFC4180.dump_to_iodata()
 
     IO.write(io_device, iodata)
+  end
+
+  defp take(item, header_keys) do
+    Enum.map(header_keys, &Map.get(item, &1))
   end
 
   @impl true
@@ -35,7 +39,7 @@ defmodule SpiderMan.Storage.CSV do
 
     file_path |> Path.dirname() |> File.mkdir_p!()
 
-    {keys, headers} =
+    {header_keys, headers} =
       Stream.map(headers, fn
         header when is_binary(header) ->
           {header, header}
@@ -60,7 +64,11 @@ defmodule SpiderMan.Storage.CSV do
         storage_context =
           Keyword.get(options, :context, %{})
           |> Map.get(:storage_context, %{})
-          |> Map.merge(%{io_device: io_device, file_path: file_path, keys: keys})
+          |> Map.merge(%{
+            io_device: io_device,
+            file_path: file_path,
+            header_keys: header_keys
+          })
 
         {storage_context, options}
 
@@ -75,14 +83,5 @@ defmodule SpiderMan.Storage.CSV do
     io_device = context.storage_context.io_device
     :ok = File.close(io_device)
     :ok
-  end
-
-  defp make_rows(list, header_keys) do
-    header_keys = Enum.reverse(header_keys)
-    Enum.map(list, &take(&1, header_keys))
-  end
-
-  defp take(item, keys) do
-    Enum.reduce(keys, [], &Map.get(item, &1))
   end
 end
