@@ -5,10 +5,17 @@ defmodule SpiderMan.CommonSpider do
   @spec start(SpiderMan.spider(), callbacks :: [fun], SpiderMan.settings()) ::
           Supervisor.on_start_child()
   def start(spider, callbacks, settings \\ []) do
+    case check_callbacks_and_merge_settings(callbacks, settings) do
+      {:ok, settings} -> SpiderMan.start(spider, settings)
+      error -> error
+    end
+  end
+
+  def check_callbacks_and_merge_settings(callbacks, settings \\ []) do
     with true <- Keyword.keyword?(callbacks),
          {:ok, callbacks} <- check_callbacks(callbacks) do
       settings = Keyword.merge(settings, spider_module: __MODULE__, callbacks: callbacks)
-      SpiderMan.start(spider, settings)
+      {:ok, settings}
     else
       {nil, _} ->
         {:error, "Please defined :callbacks option when use #{inspect(__MODULE__)}."}
