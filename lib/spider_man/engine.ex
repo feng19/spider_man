@@ -72,10 +72,12 @@ defmodule SpiderMan.Engine do
 
   @impl true
   def init(options) do
+    {gl, options} = Keyword.pop(options, :group_leader)
+    gl && Process.group_leader(self(), gl)
     Process.flag(:trap_exit, true)
     state = Map.new(options)
     %{spider: spider, spider_module: spider_module} = state
-    log_prefix = "!! spider: #{inspect(spider)},"
+    log_prefix = Map.get(state, :log_prefix, "!! spider: #{inspect(spider)},")
     Logger.metadata(spider: spider)
     log_file_path = configure_file_logger(spider, state[:log2file])
     Logger.info("#{log_prefix} configure_file_logger file: #{log_file_path} finish.")
@@ -274,6 +276,7 @@ defmodule SpiderMan.Engine do
 
     Logger.log(level, "#{log_prefix} prepare_for_stop finish.")
     Logger.log(level, "#{log_prefix} Engine stopped.")
+    remove_file_logger(state)
     :ok
   end
 
@@ -540,5 +543,11 @@ defmodule SpiderMan.Engine do
     )
 
     log_file_path
+  end
+
+  defp remove_file_logger(%{log_file_path: :skiped}), do: :skiped
+
+  defp remove_file_logger(%{spider: spider}) do
+    Logger.remove_backend({LoggerFileBackend, spider})
   end
 end

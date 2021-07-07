@@ -29,8 +29,9 @@ defmodule SpiderMan.Application do
   end
 
   def start_child(spider, spider_settings \\ []) do
+    {_, gl} = Process.info(self(), :group_leader)
     settings = Configuration.validate_settings!(spider, spider_settings)
-    Supervisor.start_child(@supervisor, {Engine, settings})
+    Supervisor.start_child(@supervisor, {Engine, [{:group_leader, gl} | settings]})
   end
 
   def stop_child(spider) do
