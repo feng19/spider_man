@@ -22,8 +22,14 @@ end
 
 ## Usage
 
-This example show how to create a module for crawly data 
-from [elixir-jobs](https://elixirjobs.net/) website by use SpiderMan.
+This example show how to crawly data from 
+[elixir-jobs](https://elixirjobs.net/) website by use SpiderMan.
+
+### Use in livebook
+
+Import notebook from URL: [`elixirjobs.livemd`](./notebooks/elixirjobs.livemd)
+
+### Use in script or mix project
 
 ```elixir
 Mix.install([
