@@ -1,5 +1,9 @@
 # SpiderMan
 
+[![Hex.pm](https://img.shields.io/hexpm/v/spider_man.svg?maxAge=2592000)](https://hex.pm/packages/wechat_sdk)
+[![Hex Docs](https://img.shields.io/badge/hex-docs-9768d1.svg)](https://hexdocs.pm/spider_man)
+[![Hex.pm](https://img.shields.io/hexpm/dt/spider_man.svg?maxAge=2592000)](https://hex.pm/packages/wechat_sdk)
+
 **SpiderMan,a fast high-level web crawling & scraping framework for Elixir.**
 
 inspired by [Crawly](https://github.com/elixir-crawly/crawly)(Elixir) and [Scrapy]()(Python).
