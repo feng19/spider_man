@@ -1,8 +1,8 @@
 # SpiderMan
 
-[![Hex.pm](https://img.shields.io/hexpm/v/spider_man.svg?maxAge=2592000)](https://hex.pm/packages/wechat_sdk)
+[![Hex.pm](https://img.shields.io/hexpm/v/spider_man.svg?maxAge=2592000)](https://hex.pm/packages/spider_man)
 [![Hex Docs](https://img.shields.io/badge/hex-docs-9768d1.svg)](https://hexdocs.pm/spider_man)
-[![Hex.pm](https://img.shields.io/hexpm/dt/spider_man.svg?maxAge=2592000)](https://hex.pm/packages/wechat_sdk)
+[![Hex.pm](https://img.shields.io/hexpm/dt/spider_man.svg?maxAge=2592000)](https://hex.pm/packages/spider_man)
 
 **SpiderMan,a fast high-level web crawling & scraping framework for Elixir.**
 
