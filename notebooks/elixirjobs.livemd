@@ -40,7 +40,7 @@ requester_options = [
 ]
 
 settings = [
-  log_file_path: false,
+  log2file: false,
   downloader_options: [requester: {SpiderMan.Requester.Finch, requester_options}],
   spider_options: [pipelines: []],
   item_processor_options: [
