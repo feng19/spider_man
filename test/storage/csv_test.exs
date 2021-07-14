@@ -32,6 +32,6 @@ defmodule SpiderMan.Storage.CSVTest do
 
     items = Enum.map(1..3, &%Item{key: &1, value: %{a: &1, b: &1 * 2}})
     assert :ok = CSV.store(:default, items, storage_context)
-    assert  "a,b\r\na,b\r\n1,2\r\n2,4\r\n3,6\r\n" = File.read!(storage_context.file_path)
+    assert "a,b\r\na,b\r\n1,2\r\n2,4\r\n3,6\r\n" = File.read!(storage_context.file_path)
   end
 end

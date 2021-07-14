@@ -11,7 +11,8 @@ defmodule SpiderMan.Engine do
     Requester,
     Storage,
     Utils,
-    Producer
+    Producer,
+    Stats
   }
 
   @type state :: map
@@ -120,6 +121,7 @@ defmodule SpiderMan.Engine do
       else
         state
       end
+      |> setup_print_stats()
 
     Logger.info("#{log_prefix} setup init finish.")
     Logger.info("#{log_prefix} setup success, status: #{status}.")
@@ -129,7 +131,12 @@ defmodule SpiderMan.Engine do
   @impl true
   def handle_call(:status, _from, state), do: {:reply, state.status, state}
 
-  def handle_call(:suspend, _from, %{status: :running, log_prefix: log_prefix} = state) do
+  def handle_call(
+        :suspend,
+        _from,
+        %{status: :running, log_prefix: log_prefix, stats_task_pid: stats_task_pid} = state
+      ) do
+    Stats.Task.suspend(stats_task_pid)
     [:ok, :ok, :ok] = call_producers(state, :suspend)
     Logger.info("#{log_prefix} status turn to suspend.")
     {:reply, :ok, %{state | status: :suspended}}
@@ -146,7 +153,12 @@ defmodule SpiderMan.Engine do
     {:reply, result, state}
   end
 
-  def handle_call(:continue, _from, %{status: :suspended, log_prefix: log_prefix} = state) do
+  def handle_call(
+        :continue,
+        _from,
+        %{status: :suspended, log_prefix: log_prefix, stats_task_pid: stats_task_pid} = state
+      ) do
+    Stats.Task.continue(stats_task_pid)
     [:ok, :ok, :ok] = call_producers(state, :continue)
     Logger.info("#{log_prefix} status turn to running.")
     {:reply, :ok, %{state | status: :running}}
@@ -175,6 +187,7 @@ defmodule SpiderMan.Engine do
     Enum.each(
       [
         # common ets
+        {"stats", state.stats_tid},
         {"failed", state.failed_tid},
         {"common_pipeline", state.common_pipeline_tid},
         # producer ets
@@ -276,6 +289,7 @@ defmodule SpiderMan.Engine do
 
     Logger.log(level, "#{log_prefix} prepare_for_stop finish.")
     Logger.log(level, "#{log_prefix} Engine stopped.")
+    Stats.detach_spider_stats()
     remove_file_logger(state)
     :ok
   end
@@ -364,6 +378,7 @@ defmodule SpiderMan.Engine do
       Map.new(
         [
           # common ets
+          stats_tid: "stats",
           failed_tid: "failed",
           common_pipeline_tid: "common_pipeline",
           # producer ets
@@ -396,6 +411,7 @@ defmodule SpiderMan.Engine do
 
     ets_tables = %{
       # common ets
+      stats_tid: :ets.new(:stats, producer_ets_options),
       failed_tid: :ets.new(:failed, ets_options),
       common_pipeline_tid: :ets.new(:common_pipeline, ets_options),
       # producer ets
@@ -407,6 +423,13 @@ defmodule SpiderMan.Engine do
       spider_pipeline_tid: :ets.new(:spider_pipeline, ets_options),
       item_processor_pipeline_tid: :ets.new(:item_processor_pipeline, ets_options)
     }
+
+    # {component, total, success, fail, duration}
+    :ets.insert(ets_tables.stats_tid, [
+      {:downloader, 0, 0, 0, 0},
+      {:spider, 0, 0, 0, 0},
+      {:item_processor, 0, 0, 0, 0}
+    ])
 
     Map.merge(state, ets_tables)
   end
@@ -549,5 +572,16 @@ defmodule SpiderMan.Engine do
 
   defp remove_file_logger(%{spider: spider}) do
     Logger.remove_backend({LoggerFileBackend, spider})
+  end
+
+  defp setup_print_stats(%{print_stats: false} = state), do: Map.put(state, :stats_task_pid, nil)
+
+  defp setup_print_stats(%{stats_tid: tid, spider: spider, status: status} = state) do
+    Stats.attach_spider_stats(spider, tid)
+
+    {:ok, stats_task_pid} =
+      Stats.Task.start_link(%{status: status, tid: tid, refresh_interval: 1000})
+
+    Map.put(state, :stats_task_pid, stats_task_pid)
   end
 end

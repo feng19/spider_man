@@ -6,19 +6,7 @@
 
 **SpiderMan,a fast high-level web crawling & scraping framework for Elixir.**
 
-inspired by [Crawly](https://github.com/elixir-crawly/crawly)(Elixir) and [Scrapy]()(Python).
-
-## Installation
-
-adding `spider_man` to your list of dependencies in `mix.exs`:
-
-```elixir
-def deps do
-  [
-    {:spider_man, "~> 0.2"}
-  ]
-end
-```
+inspired by [Crawly](https://github.com/elixir-crawly/crawly)(Elixir) and [Scrapy](https://github.com/scrapy/scrapy)(Python).
 
 ## Usage
 
@@ -33,7 +21,7 @@ Import notebook from URL: [`elixirjobs.livemd`](./notebooks/elixirjobs.livemd)
 
 ```elixir
 Mix.install([
-  {:spider_man, "~> 0.2"},
+  {:spider_man, "~> 0.3"},
   {:floki, "~> 0.31"},
   {:nimble_csv, "~> 1.1"}
 ])

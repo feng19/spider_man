@@ -29,11 +29,19 @@ defmodule SpiderMan.EngineTest do
     assert %{spider: ^spider, spider_module: ^spider, status: :running} = state
     # options
     assert %{downloader_options: _, spider_options: _, item_processor_options: _} = state
-    # components
-    assert %{supervisor_pid: _, downloader_pid: _, spider_pid: _, item_processor_pid: _} = state
+    # pids
+    assert %{
+             supervisor_pid: _,
+             downloader_pid: _,
+             spider_pid: _,
+             item_processor_pid: _,
+             stats_task_pid: _
+           } = state
+
     # ets tables
     assert %{
              # common ets
+             stats_tid: _,
              failed_tid: _,
              common_pipeline_tid: _,
              # producer ets
@@ -342,6 +350,7 @@ defmodule SpiderMan.EngineTest do
 
       suffix_of_tables = [
         # common ets
+        "stats",
         "failed",
         "common_pipeline",
         # producer ets
@@ -403,6 +412,7 @@ defmodule SpiderMan.EngineTest do
 
     %{
       # common ets
+      stats_tid: stats_tid,
       failed_tid: failed_tid,
       common_pipeline_tid: common_pipeline_tid,
       # producer ets
@@ -417,6 +427,7 @@ defmodule SpiderMan.EngineTest do
 
     tables = [
       # common ets
+      stats_tid,
       failed_tid,
       common_pipeline_tid,
       # producer ets
@@ -432,6 +443,9 @@ defmodule SpiderMan.EngineTest do
     count = Enum.count(tables)
     assert ^count = tables |> Enum.uniq() |> Enum.count()
     assert false == Enum.any?(tables, &is_nil/1)
+
+    assert [:downloader, :item_processor, :spider] =
+             :ets.tab2list(stats_tid) |> Stream.map(&elem(&1, 0)) |> Enum.sort()
 
     assert Enum.all?(
              [downloader_tid, spider_tid, item_processor_tid],

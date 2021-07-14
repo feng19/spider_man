@@ -112,6 +112,13 @@ defmodule SpiderMan do
   def insert_requests(spider, requests) do
     if info = :persistent_term.get(spider, nil) do
       objects = Enum.map(requests, &{&1.key, &1})
+
+      :telemetry.execute(
+        [:spider_man, :downloader, :start],
+        %{count: length(objects)},
+        %{name: inspect(spider)}
+      )
+
       :ets.insert(info.downloader_tid, objects)
     end
   end

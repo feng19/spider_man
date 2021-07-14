@@ -51,6 +51,7 @@ defmodule SpiderMan.Configuration do
     ]
 
     [
+      print_stats: [type: :boolean, default: true],
       log2file: [type: {:or, [:boolean, :string]}, default: true],
       status: [type: {:in, [:running, :suspended]}, default: :running],
       spider_module: [type: :atom],
