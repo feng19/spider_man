@@ -104,6 +104,7 @@ defmodule SpiderMan.Engine do
     state =
       state
       |> setup_ets_tables()
+      |> setup_print_stats()
       |> setup_components()
 
     state =
@@ -121,7 +122,6 @@ defmodule SpiderMan.Engine do
       else
         state
       end
-      |> setup_print_stats()
 
     Logger.info("#{log_prefix} setup init finish.")
     Logger.info("#{log_prefix} setup success, status: #{status}.")
