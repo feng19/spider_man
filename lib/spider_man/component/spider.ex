@@ -1,5 +1,18 @@
 defmodule SpiderMan.Component.Spider do
-  @moduledoc false
+  @moduledoc """
+  Analyze web pages.
+
+  Life cycle of request:
+    0. insert responses to ets of spider component.
+    1. component's producer get pass out to processes.
+    2. processes handle message.
+      1. handle by pre pipelines.
+      2. call `SpiderModule.handle_response/2`.
+    3. pass out message.
+      1. if success, pass out requests to Downloader component's ets.
+      1. if success, pass out items to ItemProcessor component's ets.
+      2. if failed, maybe try again.
+  """
   use SpiderMan.Component
   require Logger
   alias Broadway.Message

@@ -1,5 +1,5 @@
 defmodule SpiderMan.Requester.Finch do
-  @moduledoc false
+  @moduledoc "use Finch as Requester"
   alias SpiderMan.Requester
   @behaviour Requester
 

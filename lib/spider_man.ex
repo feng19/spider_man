@@ -1,6 +1,15 @@
 defmodule SpiderMan do
   @moduledoc """
-  Documentation for `SpiderMan`.
+  SpiderMan, a fast high-level web crawling & scraping framework for Elixir.
+
+  ## Components
+  Each Spider had 3 components, each component has theirs work:
+
+  * [Downloader](SpiderMan.Component.Downloader.html): Download request.
+  * [Spider](SpiderMan.Component.Spider.html): Analyze web pages.
+  * [ItemProcessor](SpiderMan.Component.ItemProcessor.html): Store items.
+
+  Message flow: Downloader -> Spider -> ItemProcessor.
 
   ## Spider Life Cycle
     0. `Spider.settings()`
@@ -10,15 +19,19 @@ defmodule SpiderMan do
     4. `Spider.prepare_for_start_component(:item_processor, state)`
     5. `Spider.prepare_for_start(:post, state)`
     6. `Spider.init(state)`
-    6. `Spider.handle_response(response, context)`
-    7. `Spider.prepare_for_stop_component(:downloader, state)`
-    8. `Spider.prepare_for_stop_component(:spider, state)`
-    9. `Spider.prepare_for_stop_component(:item_processor, state)`
-    10. `Spider.prepare_for_stop(state)`
+    7. `Spider.handle_response(response, context)`
+    8. `Spider.prepare_for_stop_component(:downloader, state)`
+    9. `Spider.prepare_for_stop_component(:spider, state)`
+    10. `Spider.prepare_for_stop_component(:item_processor, state)`
+    11. `Spider.prepare_for_stop(state)`
   """
   alias SpiderMan.{Engine, Configuration, Request, Response, Item}
 
   @type spider :: module | atom
+
+  @typedoc """
+  #{Configuration.configuration_docs()}
+  """
   @type settings :: keyword
   @type status :: :running | :suspended
   @type request :: Request.t()
@@ -71,9 +84,6 @@ defmodule SpiderMan do
 
   @doc """
   start a spider
-
-  ## Settings
-  #{Configuration.configuration_docs()}
   """
   @spec start(spider, settings) :: Supervisor.on_start_child()
   defdelegate start(spider, settings \\ []), to: SpiderMan.Application, as: :start_child

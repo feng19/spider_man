@@ -17,8 +17,7 @@ defmodule SpiderMan.Application do
               {spider, settings}
 
             spider when is_atom(spider) ->
-              settings = Application.get_env(@app, spider, [])
-              {spider, settings}
+              {spider, []}
           end
 
         {Engine, Configuration.validate_settings!(spider, settings)}

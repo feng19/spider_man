@@ -1,7 +1,8 @@
 defmodule SpiderMan.Requester do
-  @moduledoc false
+  @moduledoc "A Requester use by downloader component"
 
-  @callback request(url :: binary, options :: [Tesla.option()], context :: map) :: Tesla.result()
+  @callback request(url :: binary, options :: [Tesla.option()], context :: map) ::
+              Tesla.Env.result()
   @callback prepare_for_start(arg :: any, options) :: options when options: keyword
   @callback prepare_for_stop(options :: keyword) :: :ok
   @optional_callbacks prepare_for_start: 2, prepare_for_stop: 1

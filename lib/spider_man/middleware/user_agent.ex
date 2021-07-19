@@ -1,5 +1,5 @@
 defmodule SpiderMan.Middleware.UserAgent do
-  @moduledoc false
+  @moduledoc "setting user-agent for request"
   @behaviour Tesla.Middleware
 
   @impl true

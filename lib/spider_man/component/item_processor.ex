@@ -1,5 +1,22 @@
 defmodule SpiderMan.Component.ItemProcessor do
-  @moduledoc false
+  @moduledoc """
+  Store items.
+
+  Life cycle of request:
+    0. insert requests to ets of downloader.
+    1. downloader's producer get pass out to processes.
+    2. processes handle message.
+      1. handle by pre pipelines.
+      2. call `Requester.request/3`.
+      3. handle by post pipelines.
+    3. pass out message.
+      1. if success, pass out to Batchers.
+      2. if failed, maybe try again.
+    4. batcher get enough message and call `handle_batch/4`.
+      1. call `Storage.store/3` to save items.
+      2. if success, done.
+      3. if failed, maybe try again.
+  """
   use SpiderMan.Component
   require Logger
   alias Broadway.Message

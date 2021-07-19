@@ -1,5 +1,19 @@
 defmodule SpiderMan.Storage.ETS do
-  @moduledoc "save items to ets file"
+  @moduledoc """
+  Save items to *.ets file by Storage
+
+  ## Usage
+  ```elixir
+  settings = [
+    ...
+    item_processor_options: [
+      storage: [#{inspect(__MODULE__)} | {#{inspect(__MODULE__)}, file_name}]
+    ]
+  ]
+  ```
+
+  If didn't set `file_name` for this Storage, the default is `./data/Spider_Second.ets`.
+  """
   require Logger
   @behaviour SpiderMan.Storage
   alias SpiderMan.Utils

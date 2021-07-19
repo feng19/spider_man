@@ -1,11 +1,12 @@
 defmodule SpiderMan.MixProject do
   use Mix.Project
+  alias SpiderMan.{Component, Requester, Pipeline, Storage}
 
   def project do
     [
       app: :spider_man,
       description: "SpiderMan,a fast high-level web crawling & scraping framework for Elixir",
-      version: "0.3.1",
+      version: "0.3.2",
       elixir: "~> 1.11",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
@@ -33,12 +34,12 @@ defmodule SpiderMan.MixProject do
       {:broadway, "~> 0.6"},
       {:tesla, "~> 1.4"},
       {:finch, "~> 0.6"},
-      {:logger_file_backend, "~> 0.0.11"},
       {:nimble_options, "~> 0.3"},
       {:jason, "~> 1.2", optional: true},
       {:nimble_csv, "~> 1.1", optional: true},
       {:hackney, "~> 1.7", optional: true},
       {:telemetry_metrics, "~> 0.6", optional: true},
+      {:logger_file_backend, "~> 0.0.11", optional: true},
       {:ex_doc, "~> 0.22", only: [:docs, :dev], runtime: false}
     ]
   end
@@ -47,17 +48,18 @@ defmodule SpiderMan.MixProject do
     [
       main: "readme",
       formatter_opts: [gfm: true],
-      extras: ["README.md", "LICENSE"]
+      extras: ["README.md", "LICENSE"],
+      nest_modules_by_prefix: [Component, Requester, Pipeline, Storage]
     ]
   end
 
   defp cover_ignore_modules do
     [
-      SpiderMan.Requester.JustReturn,
-      SpiderMan.Pipeline.Standard,
-      SpiderMan.Pipeline.Empty,
-      SpiderMan.Pipeline.OnlyCall,
-      SpiderMan.Pipeline.NoCallFunction,
+      Requester.JustReturn,
+      Pipeline.Standard,
+      Pipeline.Empty,
+      Pipeline.OnlyCall,
+      Pipeline.NoCallFunction,
       SpiderMan.Modules,
       SpiderManTest,
       EngineTest,

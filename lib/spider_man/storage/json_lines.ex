@@ -1,5 +1,19 @@
 defmodule SpiderMan.Storage.JsonLines do
-  @moduledoc "save items to JsonLines file"
+  @moduledoc """
+  Save items to JsonLines(*.jsonl) file by Storage
+
+  ## Usage
+  ```elixir
+  settings = [
+    ...
+    item_processor_options: [
+      storage: [#{inspect(__MODULE__)} | {#{inspect(__MODULE__)}, file_name}]
+    ]
+  ]
+  ```
+
+  If didn't set `file_name` for this Storage, the default is `./data/Spider_Second.jsonl`.
+  """
   @behaviour SpiderMan.Storage
   alias SpiderMan.Utils
 
@@ -18,7 +32,7 @@ defmodule SpiderMan.Storage.JsonLines do
   @impl true
   def prepare_for_start(file_path, options) when is_binary(file_path) do
     unless Code.ensure_loaded?(Jason) do
-      raise "Please add Jason lib to your deps."
+      raise "Please add :jason lib to your deps."
     end
 
     file_path |> Path.dirname() |> File.mkdir_p!()

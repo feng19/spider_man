@@ -1,5 +1,20 @@
 defmodule SpiderMan.Pipeline.SetCookie do
-  @moduledoc false
+  @moduledoc """
+  auto save cookies for spider component & auto set cookie for downloader component
+
+  ## Usage
+  ```elixir
+  settings = [
+    ...
+    downloader_options: [
+      pipelines: [#{inspect(__MODULE__)}]
+    ],
+    spider_options: [
+      pipelines: [#{inspect(__MODULE__)}]
+    ]
+  ]
+  ```
+  """
   require Logger
   alias SpiderMan.{Request, Response}
   @behaviour SpiderMan.Pipeline

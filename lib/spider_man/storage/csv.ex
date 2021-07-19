@@ -1,5 +1,19 @@
 defmodule SpiderMan.Storage.CSV do
-  @moduledoc false
+  @moduledoc """
+  Save items to *.csv files by Storage
+
+  ## Usage
+  ```elixir
+  settings = [
+    ...
+    item_processor_options: [
+      storage: [{#{inspect(__MODULE__)}, [headers: headers, file: file_name]}]
+    ]
+  ]
+  ```
+
+  If didn't set `:file` for this Storage, the default is `./data/Spider_Second.csv`.
+  """
   @behaviour SpiderMan.Storage
   alias SpiderMan.Utils
 
@@ -28,7 +42,7 @@ defmodule SpiderMan.Storage.CSV do
 
   def prepare_for_start(arg, options) when is_list(arg) do
     unless Code.ensure_loaded?(NimbleCSV.RFC4180) do
-      raise "Please add NimbleCSV lib to your deps."
+      raise "Please add :nimble_csv lib to your deps."
     end
 
     %{file: file_path, headers: headers} = Map.new(arg)

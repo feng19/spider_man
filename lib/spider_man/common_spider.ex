@@ -1,9 +1,32 @@
 defmodule SpiderMan.CommonSpider do
+  @moduledoc "A Common Spider what setting functions as callbacks instead of module defined"
   use SpiderMan
   require Logger
+  alias SpiderMan.{Engine, Request, Response, Item}
 
-  @spec start(SpiderMan.spider(), callbacks :: [fun], SpiderMan.settings()) ::
-          Supervisor.on_start_child()
+  @type init :: (Engine.state() -> Engine.state())
+  @type handle_response ::
+          (Response.t(), context :: map ->
+             %{
+               optional(:requests) => [Request.t()],
+               optional(:items) => [Item.t()]
+             })
+  @type prepare_for_start ::
+          (SpiderMan.prepare_for_start_stage(), Engine.state() -> Engine.state())
+  @type prepare_for_stop :: (Engine.state() -> :ok)
+  @type prepare_for_start_component ::
+          (SpiderMan.component(), options :: keyword | false -> options :: keyword)
+  @type prepare_for_stop_component :: (SpiderMan.component(), options :: keyword | false -> :ok)
+  @type callback ::
+          {:init, init}
+          | {:handle_response, handle_response}
+          | {:prepare_for_start, prepare_for_start}
+          | {:prepare_for_stop, prepare_for_stop}
+          | {:prepare_for_start_component, prepare_for_start_component}
+          | {:prepare_for_start_component, prepare_for_start_component}
+  @type callbacks :: [callback]
+
+  @spec start(SpiderMan.spider(), callbacks, SpiderMan.settings()) :: Supervisor.on_start_child()
   def start(spider, callbacks, settings \\ []) do
     case check_callbacks_and_merge_settings(callbacks, settings) do
       {:ok, settings} -> SpiderMan.start(spider, settings)
@@ -11,6 +34,8 @@ defmodule SpiderMan.CommonSpider do
     end
   end
 
+  @spec check_callbacks_and_merge_settings(callbacks, SpiderMan.settings()) ::
+          {:ok, SpiderMan.settings()} | {:error, String.t()}
   def check_callbacks_and_merge_settings(callbacks, settings \\ []) do
     with true <- Keyword.keyword?(callbacks),
          {:ok, callbacks} <- check_callbacks(callbacks) do

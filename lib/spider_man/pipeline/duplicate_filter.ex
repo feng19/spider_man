@@ -1,5 +1,25 @@
 defmodule SpiderMan.Pipeline.DuplicateFilter do
-  @moduledoc false
+  @moduledoc """
+  filter msg while duplicate key
+
+  ## Usage
+  ```elixir
+  settings = [
+    ...
+    *_options: [
+      pipelines: [#{inspect(__MODULE__)} | {#{inspect(__MODULE__)}, scope}]
+    ]
+  ]
+  ```
+
+  Support for all component: `downloader` | `spider` | `item_processor`.
+
+  ### Scope
+  * `:common` | `[scope: :common]`: save key to `common_pipeline_tid`.
+  * `:pipeline` | `[scope: :pipeline]`:  save key to `pipeline_tid`.
+
+  `common_pipeline_tid` use by all component, `pipeline_tid` only use by one component.
+  """
   require Logger
   @behaviour SpiderMan.Pipeline
 

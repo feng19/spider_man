@@ -1,5 +1,5 @@
 defmodule SpiderMan.Requester.Hackney do
-  @moduledoc false
+  @moduledoc "use Hackney as Requester"
   alias SpiderMan.Requester
   @behaviour Requester
 

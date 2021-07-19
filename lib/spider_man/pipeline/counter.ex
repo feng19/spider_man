@@ -1,4 +1,25 @@
 defmodule SpiderMan.Pipeline.Counter do
+  @moduledoc """
+  msg counter for component
+
+  ## Usage
+  ```elixir
+  settings = [
+    ...
+    *_options: [
+      pipelines: [#{inspect(__MODULE__)} | {#{inspect(__MODULE__)}, scope}]
+    ]
+  ]
+  ```
+
+  Support for all component: `downloader` | `spider` | `item_processor`.
+
+  ### Scope
+  * `:common` | `[scope: :common]`: save counter to `common_pipeline_tid`.
+  * `:pipeline` | `[scope: :pipeline]`:  save counter to `pipeline_tid`.
+
+  `common_pipeline_tid` use by all component, `pipeline_tid` only use by one component.
+  """
   @behaviour SpiderMan.Pipeline
 
   @impl true

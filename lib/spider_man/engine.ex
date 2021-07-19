@@ -80,8 +80,8 @@ defmodule SpiderMan.Engine do
     %{spider: spider, spider_module: spider_module} = state
     log_prefix = Map.get(state, :log_prefix, "!! spider: #{inspect(spider)},")
     Logger.metadata(spider: spider)
-    log_file_path = configure_file_logger(spider, state[:log2file])
-    Logger.info("#{log_prefix} configure_file_logger file: #{log_file_path} finish.")
+    log_file_path = setup_file_logger(spider, state[:log2file])
+    Logger.info("#{log_prefix} setup file_logger: #{log_file_path} finish.")
     Logger.info("#{log_prefix} setup starting with spider_module: #{spider_module}.")
     status = Map.get(state, :status, :running)
 
@@ -547,15 +547,19 @@ defmodule SpiderMan.Engine do
   defp get_component_pid(:spider, %{spider_pid: pid}), do: pid
   defp get_component_pid(:item_processor, %{item_processor_pid: pid}), do: pid
 
-  defp configure_file_logger(_spider, false), do: :skiped
+  defp setup_file_logger(_spider, false), do: :skiped
 
-  defp configure_file_logger(spider, log2file) when log2file in [nil, true] do
+  defp setup_file_logger(spider, log2file) when log2file in [nil, true] do
     timestamp = System.system_time(:second)
     log_file_path = Path.join([System.tmp_dir(), inspect(spider), "#{timestamp}.log"])
-    configure_file_logger(spider, log_file_path)
+    setup_file_logger(spider, log_file_path)
   end
 
-  defp configure_file_logger(spider, log_file_path) do
+  defp setup_file_logger(spider, log_file_path) do
+    unless Code.ensure_loaded?(LoggerFileBackend) do
+      raise "Please add :logger_file_backend lib to your deps."
+    end
+
     backend = {LoggerFileBackend, spider}
     Logger.add_backend(backend)
 
