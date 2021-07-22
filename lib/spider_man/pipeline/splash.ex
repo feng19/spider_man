@@ -5,14 +5,13 @@ defmodule SpiderMan.Pipeline.Splash do
   use [Splash](https://splash.readthedocs.io/en/stable/) for javascript rendering service
 
   ## Usage
-  ```elixir
-  settings = [
-    ...
-    downloader_options: [
-      pipelines: [#{inspect(__MODULE__)} | {#{inspect(__MODULE__)}, %{url: #{inspect(@default_url)}, query: query_for_splash}}]
-    ]
-  ]
-  ```
+
+      settings = [
+        downloader_options: [
+          pipelines: [#{inspect(__MODULE__)} | {#{inspect(__MODULE__)}, %{url: #{inspect(@default_url)}, query: query_for_splash}}]
+        ],
+        ...
+      ]
 
   If didn't set dir for this pipeline, the default is `%{url: #{inspect(@default_url)}, query: []}`.
   """

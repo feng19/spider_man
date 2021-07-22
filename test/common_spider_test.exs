@@ -1,6 +1,5 @@
 defmodule SpiderMan.CommonSpiderTest do
   use ExUnit.Case, async: true
-  import ExUnit.CaptureLog
   alias SpiderMan.{CommonSpider, Item, Requester, Utils}
 
   setup_all do
@@ -66,27 +65,23 @@ defmodule SpiderMan.CommonSpiderTest do
     wrong_fun = fn -> nil end
     handle_response = fn _response, _context -> %{} end
 
-    assert capture_log([level: :warn], fn ->
-             {:ok, _pid} =
-               CommonSpider.start(spider, [
-                 {:handle_response, handle_response},
-                 {key, :wrong_type}
-               ])
+    wrong_type_error1 =
+      "Wrong type of #{to_string(key)}: :wrong_type defined in :callbacks option when use #{inspect(CommonSpider)}, please use fun/#{arity} for this option."
 
-             SpiderMan.stop(spider)
-           end) =~
-             "Wrong type of #{to_string(key)}: :wrong_type defined in :callbacks option when use #{inspect(CommonSpider)}, please use fun/#{arity} for this option."
+    wrong_type_error2 =
+      "Wrong type of #{to_string(key)}: #{inspect(wrong_fun)} defined in :callbacks option when use #{inspect(CommonSpider)}, please use fun/#{arity} for this option."
 
-    assert capture_log([level: :warn], fn ->
-             {:ok, _pid} =
-               CommonSpider.start(spider, [
-                 {:handle_response, handle_response},
-                 {key, wrong_fun}
-               ])
+    assert {:error, ^wrong_type_error1} =
+             CommonSpider.start(spider, [
+               {:handle_response, handle_response},
+               {key, :wrong_type}
+             ])
 
-             SpiderMan.stop(spider)
-           end) =~
-             "Wrong type of #{to_string(key)}: #{inspect(wrong_fun)} defined in :callbacks option when use #{inspect(CommonSpider)}, please use fun/#{arity} for this option."
+    assert {:error, ^wrong_type_error2} =
+             CommonSpider.start(spider, [
+               {:handle_response, handle_response},
+               {key, wrong_fun}
+             ])
   end
 
   test "setup_callbacks", %{spider: spider} do

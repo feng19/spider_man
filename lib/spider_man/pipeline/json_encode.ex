@@ -3,14 +3,13 @@ defmodule SpiderMan.Pipeline.JsonEncode do
   Encode item.value to json for ItemProcessor component
 
   ## Usage
-  ```elixir
-  settings = [
-    ...
-    item_processor_options: [
-      pipelines: [#{inspect(__MODULE__)} | {#{inspect(__MODULE__)}, encode_opts}]
-    ]
-  ]
-  ```
+
+      settings = [
+        item_processor_options: [
+          pipelines: [#{inspect(__MODULE__)} | {#{inspect(__MODULE__)}, encode_opts}]
+        ],
+        ...
+      ]
   """
   @behaviour SpiderMan.Pipeline
 

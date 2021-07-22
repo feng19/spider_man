@@ -3,14 +3,13 @@ defmodule SpiderMan.Storage.Multi do
   Support setting multiple Storage for ItemProcessor component
 
   ## Usage
-  ```elixir
-  settings = [
-    ...
-    item_processor_options: [
-      storage: [SpiderMan.Storage.ETS, SpiderMan.Storage.JsonLines, ...]
-    ]
-  ]
-  ```
+
+      settings = [
+        ...
+        item_processor_options: [
+          storage: [SpiderMan.Storage.ETS, SpiderMan.Storage.JsonLines, ...]
+        ]
+      ]
   """
   @behaviour SpiderMan.Storage
 

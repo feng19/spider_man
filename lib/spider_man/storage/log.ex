@@ -3,14 +3,13 @@ defmodule SpiderMan.Storage.Log do
   Just log each item by Logger
 
   ## Usage
-  ```elixir
-  settings = [
-    ...
-    item_processor_options: [
-      storage: [#{inspect(__MODULE__)}]
-    ]
-  ]
-  ```
+
+      settings = [
+        ...
+        item_processor_options: [
+          storage: [#{inspect(__MODULE__)}]
+        ]
+      ]
   """
   require Logger
   @behaviour SpiderMan.Storage

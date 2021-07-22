@@ -3,23 +3,23 @@ defmodule SpiderMan.Pipeline.SaveToFile do
   A post_pipeline what is use to download file directly for downloader component
 
   ## Usage
-  ```elixir
-  settings = [
-    ...
-    downloader_options: [
-      post_pipeline: [#{inspect(__MODULE__)} | {#{inspect(__MODULE__)}, dir | [dir: dir]}]
-    ]
-  ]
-  ```
 
-  The file name is equal to request.key.
+      settings = [
+        downloader_options: [
+          post_pipeline: [#{inspect(__MODULE__)} | {#{inspect(__MODULE__)}, dir | [dir: dir]}]
+        ],
+        ...
+      ]
+
+  The file name is equal to `request.key`.
+
   If didn't set dir for this pipeline, the default is current dir.
+
   Set the flag for download a request:
-  ```elixir
-  build_request("https://www.example.com/download/file")
-  |> set_key("file_name.txt")
-  |> set_flag(:save2file)
-  ```
+
+      request = build_request("https://www.example.com/download/file")
+      |> set_key("file_name.txt")
+      |> set_flag(:save2file)
 
   ### Supports Flag
   * `:save2file`: Save the request.body to file and continue go to next component.

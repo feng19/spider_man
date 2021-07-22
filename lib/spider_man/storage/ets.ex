@@ -3,14 +3,13 @@ defmodule SpiderMan.Storage.ETS do
   Save items to *.ets file by Storage
 
   ## Usage
-  ```elixir
-  settings = [
-    ...
-    item_processor_options: [
-      storage: [#{inspect(__MODULE__)} | {#{inspect(__MODULE__)}, file_name}]
-    ]
-  ]
-  ```
+
+      settings = [
+        ...
+        item_processor_options: [
+          storage: [#{inspect(__MODULE__)} | {#{inspect(__MODULE__)}, file_name}]
+        ]
+      ]
 
   If didn't set `file_name` for this Storage, the default is `./data/Spider_Second.ets`.
   """

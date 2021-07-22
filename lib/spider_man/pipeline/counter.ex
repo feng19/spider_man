@@ -3,14 +3,13 @@ defmodule SpiderMan.Pipeline.Counter do
   msg counter for component
 
   ## Usage
-  ```elixir
-  settings = [
-    ...
-    *_options: [
-      pipelines: [#{inspect(__MODULE__)} | {#{inspect(__MODULE__)}, scope}]
-    ]
-  ]
-  ```
+
+      settings = [
+        *_options: [
+          pipelines: [#{inspect(__MODULE__)} | {#{inspect(__MODULE__)}, scope}]
+        ],
+        ...
+      ]
 
   Support for all component: `downloader` | `spider` | `item_processor`.
 

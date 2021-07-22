@@ -3,14 +3,13 @@ defmodule SpiderMan.Storage.CSV do
   Save items to *.csv files by Storage
 
   ## Usage
-  ```elixir
-  settings = [
-    ...
-    item_processor_options: [
-      storage: [{#{inspect(__MODULE__)}, [headers: headers, file: file_name]}]
-    ]
-  ]
-  ```
+
+      settings = [
+        ...
+        item_processor_options: [
+          storage: [{#{inspect(__MODULE__)}, [headers: headers, file: file_name]}]
+        ]
+      ]
 
   If didn't set `:file` for this Storage, the default is `./data/Spider_Second.csv`.
   """

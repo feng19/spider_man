@@ -3,14 +3,13 @@ defmodule SpiderMan.Pipeline.Debug do
   use for debug msg by component
 
   ## Usage
-  ```elixir
-  settings = [
-    ...
-    *_options: [
-      pipelines: [#{inspect(__MODULE__)} | {#{inspect(__MODULE__)}, log_prefix :: String.t()}]
-    ]
-  ]
-  ```
+
+      settings = [
+        *_options: [
+          pipelines: [#{inspect(__MODULE__)} | {#{inspect(__MODULE__)}, log_prefix :: String.t()}]
+        ],
+        ...
+      ]
 
   Support for all component: `downloader` | `spider` | `item_processor`.
   """

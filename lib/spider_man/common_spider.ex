@@ -1,5 +1,10 @@
 defmodule SpiderMan.CommonSpider do
-  @moduledoc "A Common Spider what setting functions as callbacks instead of module defined"
+  @moduledoc """
+  A Common Spider what setting functions as callbacks instead of module defined
+
+  ## Usage
+      #{inspect(__MODULE__)}.start(:spider_name, handle_response: fn response, context -> %{} end)
+  """
   use SpiderMan
   require Logger
   alias SpiderMan.{Engine, Request, Response, Item}
@@ -115,43 +120,37 @@ defmodule SpiderMan.CommonSpider do
 
   defmacrop check_callback(callbacks, key, arity) do
     quote do
-      case Keyword.pop(unquote(callbacks), unquote(key)) do
-        {callback, _} when is_function(callback, unquote(arity)) ->
-          unquote(callbacks)
+      case Keyword.get(unquote(callbacks), unquote(key)) do
+        callback when is_function(callback, unquote(arity)) ->
+          {:ok, unquote(callbacks)}
 
-        {nil, _} ->
-          unquote(callbacks)
+        nil ->
+          {:ok, unquote(callbacks)}
 
-        {other, callbacks} ->
-          Logger.warn(
-            "Wrong type of #{unquote(key)}: #{inspect(other)} defined in :callbacks option when use #{inspect(__MODULE__)}, please use fun/#{unquote(arity)} for this option."
-          )
-
-          callbacks
+        other ->
+          {:error,
+           "Wrong type of #{unquote(key)}: #{inspect(other)} defined in :callbacks option when use #{inspect(__MODULE__)}, please use fun/#{unquote(arity)} for this option."}
       end
     end
   end
 
   defp check_callbacks(callbacks) do
-    case Keyword.get(callbacks, :handle_response) do
-      callback when is_function(callback, 2) ->
-        callbacks =
-          callbacks
-          |> check_callback(:prepare_for_start, 2)
-          |> check_callback(:prepare_for_stop, 1)
-          |> check_callback(:init, 1)
-          |> check_callback(:prepare_for_start_component, 2)
-          |> check_callback(:prepare_for_stop_component, 2)
-
-        {:ok, callbacks}
-
-      nil ->
+    with callbacks <- Enum.reject(callbacks, &(elem(&1, 1) |> is_nil())),
+         true <- Keyword.has_key?(callbacks, :handle_response),
+         {:ok, callbacks} <- check_callback(callbacks, :handle_response, 2),
+         {:ok, callbacks} <- check_callback(callbacks, :prepare_for_start, 2),
+         {:ok, callbacks} <- check_callback(callbacks, :prepare_for_stop, 1),
+         {:ok, callbacks} <- check_callback(callbacks, :init, 1),
+         {:ok, callbacks} <- check_callback(callbacks, :prepare_for_start_component, 2),
+         {:ok, callbacks} <- check_callback(callbacks, :prepare_for_stop_component, 2) do
+      {:ok, callbacks}
+    else
+      false ->
         {:error,
          "Must defined :handle_response for :callbacks option when use #{inspect(__MODULE__)}."}
 
-      other ->
-        {:error,
-         "Wrong type of handle_response: #{inspect(other)} defined in :callbacks option when use #{inspect(__MODULE__)}, please use fun/2 for this option."}
+      error ->
+        error
     end
   end
 

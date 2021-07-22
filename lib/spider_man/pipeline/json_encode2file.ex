@@ -3,16 +3,16 @@ defmodule SpiderMan.Pipeline.JsonEncode2File do
   Encode item.value to json and save to files for ItemProcessor component
 
   ## Usage
-  ```elixir
-  settings = [
-    ...
-    item_processor_options: [
-      pipelines: [#{inspect(__MODULE__)} | {#{inspect(__MODULE__)}, dir | [dir: dir]}]
-    ]
-  ]
-  ```
 
-  The file name is equal to item.key.
+      settings = [
+        item_processor_options: [
+          pipelines: [#{inspect(__MODULE__)} | {#{inspect(__MODULE__)}, dir | [dir: dir]}]
+        ],
+        ...
+      ]
+
+  The file name is equal to `item.key`.
+
   If didn't set dir for this pipeline, the default is current dir.
   """
   @behaviour SpiderMan.Pipeline

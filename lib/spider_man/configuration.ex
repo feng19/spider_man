@@ -38,29 +38,23 @@ defmodule SpiderMan.Configuration do
 
   ## Startup Spiders
 
-  ```elixir
-  config :spider_man, :spiders, [
-    SpiderA,
-    {SpiderB, settings = [...]},
-    ...
-  ]
-  ```
+      config :spider_man, :spiders, [
+        SpiderA,
+        {SpiderB, settings = [...]},
+        ...
+      ]
 
   All Spider what defined on `:spiders` would auto startup while the `:spider_man` application started.
 
   ## Global Settings
 
-  ```elixir
-  config :spider_man, global_settings: settings = [...]
-  ```
+      config :spider_man, global_settings: settings = [...]
 
   This `settings` work for all spiders.
 
   ## Settings for Spider on config files
 
-  ```elixir
-  config :spider_man, SpiderA, settings = [...]
-  ```
+      config :spider_man, SpiderA, settings = [...]
 
   This `settings` only work for `SpiderA`.
 

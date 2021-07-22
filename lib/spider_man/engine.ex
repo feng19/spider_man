@@ -17,7 +17,23 @@ defmodule SpiderMan.Engine do
 
   @type state :: map
   @components [:downloader, :spider, :item_processor]
+  @ets_key_filename_mapping [
+    # common ets
+    stats_tid: "stats",
+    failed_tid: "failed",
+    common_pipeline_tid: "common_pipeline",
+    # producer ets
+    downloader_tid: "downloader",
+    spider_tid: "spider",
+    item_processor_tid: "item_processor",
+    # pipeline ets
+    downloader_pipeline_tid: "downloader_pipeline",
+    spider_pipeline_tid: "spider_pipeline",
+    item_processor_pipeline_tid: "item_processor_pipeline"
+  ]
+  @ets_filename_key_mapping Enum.map(@ets_key_filename_mapping, fn {k, v} -> {v, k} end)
 
+  @doc false
   def child_spec(settings) do
     %{
       id: Keyword.fetch!(settings, :spider),
@@ -26,14 +42,19 @@ defmodule SpiderMan.Engine do
     }
   end
 
+  @doc false
   def start_link(options) do
     spider = Keyword.fetch!(options, :spider)
     GenServer.start_link(__MODULE__, options, name: spider)
   end
 
+  @doc false
   def status(spider), do: GenServer.call(spider, :status)
+  @doc false
   defdelegate get_state(spider), to: :sys
+  @doc false
   def suspend(spider, timeout \\ :infinity), do: GenServer.call(spider, :suspend, timeout)
+  @doc false
   def suspend_component(spider, component, timeout \\ :infinity)
 
   def suspend_component(spider, component, timeout) when component in @components do
@@ -42,6 +63,7 @@ defmodule SpiderMan.Engine do
 
   def suspend_component(_spider, _component, _timeout), do: :unknown_component
 
+  @doc "dump spider's ets tables to files"
   def dump2file(spider, file_name \\ nil, timeout \\ :infinity) do
     Logger.notice("Please ensure all producer's events is save done before dump2file: Y/N?")
 
@@ -54,11 +76,14 @@ defmodule SpiderMan.Engine do
     end
   end
 
+  @doc "dump spider's ets tables to files, don't need confirm"
   def dump2file_force(spider, file_name \\ nil, timeout \\ :infinity) do
     GenServer.call(spider, {:dump2file, file_name}, timeout)
   end
 
+  @doc false
   def continue(spider, timeout \\ :infinity), do: GenServer.call(spider, :continue, timeout)
+  @doc false
   def continue_component(spider, component, timeout \\ :infinity)
 
   def continue_component(spider, component, timeout) when component in @components do
@@ -66,7 +91,7 @@ defmodule SpiderMan.Engine do
   end
 
   def continue_component(_spider, _component, _timeout), do: :unknown_component
-
+  @doc false
   def retry_failed(spider, max_retries \\ 3, timeout \\ :infinity) do
     GenServer.call(spider, {:retry_failed, max_retries}, timeout)
   end
@@ -76,55 +101,36 @@ defmodule SpiderMan.Engine do
     {gl, options} = Keyword.pop(options, :group_leader)
     gl && Process.group_leader(self(), gl)
     Process.flag(:trap_exit, true)
-    state = Map.new(options)
-    %{spider: spider, spider_module: spider_module} = state
+    %{spider: spider, spider_module: spider_module} = state = Map.new(options)
+
     log_prefix = Map.get(state, :log_prefix, "!! spider: #{inspect(spider)},")
     Logger.metadata(spider: spider)
     log_file_path = setup_file_logger(spider, state[:log2file])
     Logger.info("#{log_prefix} setup file_logger: #{log_file_path} finish.")
+
     Logger.info("#{log_prefix} setup starting with spider_module: #{spider_module}.")
-    status = Map.get(state, :status, :running)
-
-    state =
-      Map.merge(state, %{
-        status: status,
-        log_prefix: log_prefix,
-        log_file_path: log_file_path
-      })
-
-    is_prepare_for_start? = function_exported?(spider_module, :prepare_for_start, 2)
-
-    state =
-      if is_prepare_for_start? do
-        spider_module.prepare_for_start(:pre, state)
-      else
-        state
-      end
 
     state =
       state
-      |> setup_ets_tables()
-      |> setup_print_stats()
-      |> setup_components()
-
-    state =
-      if is_prepare_for_start? do
-        spider_module.prepare_for_start(:post, state)
-      else
-        state
-      end
+      |> Map.merge(%{
+        status: Map.get(state, :status, :running),
+        log_prefix: log_prefix,
+        log_file_path: log_file_path
+      })
+      |> prepare_for_start()
 
     Logger.info("#{log_prefix} setup prepare_for_start finish.")
 
     state =
       if function_exported?(spider_module, :init, 1) do
-        spider_module.init(state)
+        state = spider_module.init(state)
+        Logger.info("#{log_prefix} setup init finish.")
+        state
       else
         state
       end
 
-    Logger.info("#{log_prefix} setup init finish.")
-    Logger.info("#{log_prefix} setup success, status: #{status}.")
+    Logger.info("#{log_prefix} setup done, status: #{state.status}.")
     {:ok, state}
   end
 
@@ -185,24 +191,11 @@ defmodule SpiderMan.Engine do
     Logger.notice("#{log_prefix} starting dump2file: #{file_name}_*.ets ...")
 
     Enum.each(
-      [
-        # common ets
-        {"stats", state.stats_tid},
-        {"failed", state.failed_tid},
-        {"common_pipeline", state.common_pipeline_tid},
-        # producer ets
-        {"downloader", state.downloader_tid},
-        {"spider", state.spider_tid},
-        {"item_processor", state.item_processor_tid},
-        # pipeline ets
-        {"downloader_pipeline", state.downloader_pipeline_tid},
-        {"spider_pipeline", state.spider_pipeline_tid},
-        {"item_processor_pipeline", state.item_processor_pipeline_tid}
-      ],
-      fn {name, tid} ->
-        file_name = "#{file_name}_#{name}.ets"
+      @ets_filename_key_mapping,
+      fn {file_suffix, key} ->
+        file_name = "#{file_name}_#{file_suffix}.ets"
         Logger.notice("starting dump2file: #{file_name} ...")
-        result = Utils.dump_ets2file(tid, file_name)
+        result = Map.fetch!(state, key) |> Utils.dump_ets2file(file_name)
         Logger.notice("dump2file: #{file_name} finished, result: #{inspect(result)}.")
       end
     )
@@ -252,11 +245,8 @@ defmodule SpiderMan.Engine do
   end
 
   @impl true
-  def terminate(reason, state) do
+  def terminate(reason, %{supervisor_pid: supervisor_pid, log_prefix: log_prefix} = state) do
     # wait all broadway stopped then go continue
-    %{supervisor_pid: supervisor_pid, spider_module: spider_module, log_prefix: log_prefix} =
-      state
-
     ref = Process.monitor(supervisor_pid)
     Process.exit(supervisor_pid, reason_to_signal(reason))
 
@@ -267,35 +257,65 @@ defmodule SpiderMan.Engine do
     level = if reason in [:normal, :shutdown], do: :info, else: :error
     Logger.log(level, "#{log_prefix} terminate by reason: #{inspect(reason)}.")
 
+    prepare_for_stop(state, level)
+    Logger.log(level, "#{log_prefix} prepare_for_stop finish.")
+
+    Stats.detach_spider_stats()
+    remove_file_logger(state)
+    Logger.log(level, "#{log_prefix} Engine stopped.")
+    :ok
+  end
+
+  defp prepare_for_stop(
+         %{
+           spider_module: spider_module,
+           log_prefix: log_prefix,
+           downloader_options: downloader_options,
+           spider_options: spider_options,
+           item_processor_options: item_processor_options
+         } = state,
+         level
+       ) do
     # prepare_for_stop_component
     @components
-    |> Enum.zip([state.downloader_options, state.spider_options, state.item_processor_options])
+    |> Enum.zip([downloader_options, spider_options, item_processor_options])
     |> Enum.each(fn {component, options} ->
       prepare_for_stop_component(component, options, spider_module, log_prefix)
     end)
 
     Logger.log(level, "#{log_prefix} components prepare_for_stop finish.")
 
-    Requester.prepare_for_stop(state.downloader_options)
+    Requester.prepare_for_stop(downloader_options)
     Logger.log(level, "#{log_prefix} Requester prepare_for_stop finish.")
 
-    Storage.prepare_for_stop(state.item_processor_options)
+    Storage.prepare_for_stop(item_processor_options)
     Logger.log(level, "#{log_prefix} Storage prepare_for_stop finish.")
 
     # prepare_for_stop
     if function_exported?(spider_module, :prepare_for_stop, 1) do
       spider_module.prepare_for_stop(state)
     end
-
-    Logger.log(level, "#{log_prefix} prepare_for_stop finish.")
-    Logger.log(level, "#{log_prefix} Engine stopped.")
-    Stats.detach_spider_stats()
-    remove_file_logger(state)
-    :ok
   end
 
   defp reason_to_signal(:killed), do: :kill
   defp reason_to_signal(other), do: other
+
+  defp prepare_for_start(%{spider_module: spider_module} = state) do
+    if function_exported?(spider_module, :prepare_for_start, 2) do
+      state =
+        spider_module.prepare_for_start(:pre, state)
+        |> setup_ets_tables()
+        |> setup_print_stats()
+        |> setup_components()
+
+      spider_module.prepare_for_start(:post, state)
+    else
+      state
+      |> setup_ets_tables()
+      |> setup_print_stats()
+      |> setup_components()
+    end
+  end
 
   defp prepare_for_start_component(options, component, spider_module, log_prefix) do
     options =
@@ -376,20 +396,7 @@ defmodule SpiderMan.Engine do
 
     ets_tables =
       Map.new(
-        [
-          # common ets
-          stats_tid: "stats",
-          failed_tid: "failed",
-          common_pipeline_tid: "common_pipeline",
-          # producer ets
-          downloader_tid: "downloader",
-          spider_tid: "spider",
-          item_processor_tid: "item_processor",
-          # pipeline ets
-          downloader_pipeline_tid: "downloader_pipeline",
-          spider_pipeline_tid: "spider_pipeline",
-          item_processor_pipeline_tid: "item_processor_pipeline"
-        ],
+        @ets_key_filename_mapping,
         fn {key, file_suffix} ->
           file_name = "#{file_name}_#{file_suffix}.ets"
           Logger.info("#{log_prefix} loading ets from file: #{file_name} ...")
@@ -424,8 +431,8 @@ defmodule SpiderMan.Engine do
       item_processor_pipeline_tid: :ets.new(:item_processor_pipeline, ets_options)
     }
 
-    # {component, total, success, fail, duration}
     :ets.insert(ets_tables.stats_tid, [
+      # {Component, Total, Success, Fail, Duration}
       {:downloader, 0, 0, 0, 0},
       {:spider, 0, 0, 0, 0},
       {:item_processor, 0, 0, 0, 0}
@@ -512,7 +519,7 @@ defmodule SpiderMan.Engine do
     name = :"#{state.spider}.Supervisor"
     state = Map.merge(state, %{downloader_pid: nil, spider_pid: nil, item_processor_pid: nil})
 
-    {components, specs} =
+    {components, children} =
       [
         {:downloader_pid, {Downloader, state.downloader_options}},
         {:spider_pid, {Spider, state.spider_options}},
@@ -521,12 +528,7 @@ defmodule SpiderMan.Engine do
       |> Enum.filter(&match?({_, {_, options}} when is_list(options), &1))
       |> Enum.unzip()
 
-    Supervisor.start_link(
-      specs,
-      strategy: :one_for_one,
-      max_restarts: 0,
-      name: name
-    )
+    Supervisor.start_link(children, strategy: :one_for_one, max_restarts: 0, name: name)
     |> case do
       {:ok, supervisor_pid} ->
         Logger.info("#{state.log_prefix} setup components finish.")
@@ -534,9 +536,9 @@ defmodule SpiderMan.Engine do
         component_pids =
           Supervisor.which_children(supervisor_pid) |> Enum.reduce([], &[elem(&1, 1) | &2])
 
-        Enum.zip(components, component_pids)
+        [:supervisor_pid | components]
+        |> Enum.zip([supervisor_pid | component_pids])
         |> Enum.into(state)
-        |> Map.put(:supervisor_pid, supervisor_pid)
 
       error ->
         raise "start name: #{name} error: #{inspect(error)}"

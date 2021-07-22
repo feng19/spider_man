@@ -9,21 +9,23 @@ defmodule SpiderMan do
   * [Spider](SpiderMan.Component.Spider.html): Analyze web pages.
   * [ItemProcessor](SpiderMan.Component.ItemProcessor.html): Store items.
 
-  Message flow: Downloader -> Spider -> ItemProcessor.
+  Message flow: `Downloader` -> `Spider` -> `ItemProcessor`.
 
   ## Spider Life Cycle
     0. `Spider.settings()`
-    1. `Spider.prepare_for_start(:pre, state)`
-    2. `Spider.prepare_for_start_component(:downloader, state)`
-    3. `Spider.prepare_for_start_component(:spider, state)`
-    4. `Spider.prepare_for_start_component(:item_processor, state)`
-    5. `Spider.prepare_for_start(:post, state)`
-    6. `Spider.init(state)`
-    7. `Spider.handle_response(response, context)`
-    8. `Spider.prepare_for_stop_component(:downloader, state)`
-    9. `Spider.prepare_for_stop_component(:spider, state)`
-    10. `Spider.prepare_for_stop_component(:item_processor, state)`
-    11. `Spider.prepare_for_stop(state)`
+    1. Prepare For Start Stage
+      1. `Spider.prepare_for_start(:pre, state)`
+      2. `Spider.prepare_for_start_component(:downloader, state)`
+      3. `Spider.prepare_for_start_component(:spider, state)`
+      4. `Spider.prepare_for_start_component(:item_processor, state)`
+      5. `Spider.prepare_for_start(:post, state)`
+    2. `Spider.init(state)`
+    3. `Spider.handle_response(response, context)`
+    4. Prepare For Stop Stage
+      1. `Spider.prepare_for_stop_component(:downloader, state)`
+      2. `Spider.prepare_for_stop_component(:spider, state)`
+      3. `Spider.prepare_for_stop_component(:item_processor, state)`
+      4. `Spider.prepare_for_stop(state)`
   """
   alias SpiderMan.{Engine, Configuration, Request, Response, Item}
 
