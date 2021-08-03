@@ -5,14 +5,14 @@ defmodule SpiderMan.Engine do
 
   alias SpiderMan.{
     Component.Downloader,
-    Component.Spider,
     Component.ItemProcessor,
+    Component.Spider,
     Pipeline,
-    Requester,
-    Storage,
-    Utils,
     Producer,
-    Stats
+    Requester,
+    Stats,
+    Storage,
+    Utils
   }
 
   @type state :: map

@@ -16,7 +16,7 @@ defmodule SpiderMan.Component.Spider do
   use SpiderMan.Component
   require Logger
   alias Broadway.Message
-  alias SpiderMan.{Pipeline, Component}
+  alias SpiderMan.{Component, Pipeline}
 
   @event_name [:spider_man, :spider, :stop]
 

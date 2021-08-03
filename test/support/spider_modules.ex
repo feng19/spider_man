@@ -1,4 +1,5 @@
 defmodule SpiderMan.Modules do
+  @moduledoc false
   def create_spider(module_name) do
     with {:module, spider, _binary, _term} <-
            Module.create(
@@ -31,9 +32,10 @@ SpiderMan.Modules.create_spider(SpiderManTest)
 SpiderMan.Modules.create_spider(EngineTest)
 
 defmodule Spider0 do
+  @moduledoc false
   use SpiderMan
   alias SpiderMan.{Requester, Response}
-  alias SpiderMan.Pipeline.{SetCookie, DuplicateFilter}
+  alias SpiderMan.Pipeline.{DuplicateFilter, SetCookie}
 
   @impl true
   def settings do

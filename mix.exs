@@ -40,7 +40,8 @@ defmodule SpiderMan.MixProject do
       {:hackney, "~> 1.7", optional: true},
       {:telemetry_metrics, "~> 0.6", optional: true},
       {:logger_file_backend, "~> 0.0.11", optional: true},
-      {:ex_doc, "~> 0.22", only: [:docs, :dev], runtime: false}
+      {:ex_doc, "~> 0.22", only: [:docs, :dev], runtime: false},
+      {:credo, "~> 1.5", only: [:dev, :test], runtime: false}
     ]
   end
 

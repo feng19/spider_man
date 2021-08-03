@@ -1,4 +1,5 @@
 defmodule SpiderMan.Pipeline.Standard do
+  @moduledoc false
   @behaviour SpiderMan.Pipeline
 
   @impl true
@@ -10,16 +11,19 @@ defmodule SpiderMan.Pipeline.Standard do
 end
 
 defmodule SpiderMan.Pipeline.Empty do
+  @moduledoc false
   @behaviour SpiderMan.Pipeline
 end
 
 defmodule SpiderMan.Pipeline.OnlyCall do
+  @moduledoc false
   @behaviour SpiderMan.Pipeline
   @impl true
   def call(response, _state), do: response
 end
 
 defmodule SpiderMan.Pipeline.NoCallFunction do
+  @moduledoc false
   @behaviour SpiderMan.Pipeline
 
   def run(response, _state), do: response

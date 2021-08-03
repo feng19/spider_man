@@ -1,7 +1,7 @@
 defmodule SpiderMan.SpiderTest do
   use ExUnit.Case, async: true
   import ExUnit.CaptureLog
-  alias SpiderMan.{Engine, CommonSpider, Requester.JustReturn, Pipeline, Storage, Utils, Producer}
+  alias SpiderMan.{CommonSpider, Engine, Pipeline, Producer, Requester.JustReturn, Storage, Utils}
 
   setup_all do
     spider = SpiderTest
@@ -180,7 +180,7 @@ defmodule SpiderMan.SpiderTest do
              item_processor_pipeline_tid: item_processor_pipeline_tid
            } = SpiderMan.get_state(spider)
 
-    requests = 1..10000 |> Enum.map(&{&1, 1}) |> Utils.build_requests()
+    requests = 1..10_000 |> Enum.map(&{&1, 1}) |> Utils.build_requests()
     assert SpiderMan.insert_requests(spider, requests)
     total = 500_000
     wait_until_count(downloader_pipeline_tid, total)

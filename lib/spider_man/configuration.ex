@@ -1,5 +1,5 @@
 defmodule SpiderMan.Configuration do
-  alias SpiderMan.{Utils, Pipeline, Producer, Storage}
+  alias SpiderMan.{Pipeline, Producer, Storage, Utils}
 
   @default_settings [
     downloader_options: [

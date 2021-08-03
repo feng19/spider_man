@@ -100,22 +100,20 @@ defmodule SpiderMan.Storage do
 
       Multi ->
         context = Keyword.get(options, :context)
-
-        Enum.each(
-          context.storage_context.storage_list,
-          fn %{storage: storage, storage_context: storage_context} ->
-            if function_exported?(storage, :prepare_for_stop, 1) do
-              context = Map.merge(context, %{storage: storage, storage_context: storage_context})
-              options = Keyword.merge(options, storage: storage, context: context)
-              storage.prepare_for_stop(options)
-            end
-          end
-        )
+        Enum.each(context.storage_context.storage_list, &call_storage_stop(&1, options, context))
 
       storage ->
         if function_exported?(storage, :prepare_for_stop, 1) do
           storage.prepare_for_stop(options)
         end
+    end
+  end
+
+  defp call_storage_stop(%{storage: storage, storage_context: storage_context}, options, context) do
+    if function_exported?(storage, :prepare_for_stop, 1) do
+      context = Map.merge(context, %{storage: storage, storage_context: storage_context})
+      options = Keyword.merge(options, storage: storage, context: context)
+      storage.prepare_for_stop(options)
     end
   end
 end

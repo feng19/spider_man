@@ -1,6 +1,6 @@
 defmodule SpiderMan.Utils do
   @moduledoc "Utils"
-  alias SpiderMan.{Request, Response, Item}
+  alias SpiderMan.{Item, Request, Response}
 
   @type url :: String.t()
   @type urls :: [url]

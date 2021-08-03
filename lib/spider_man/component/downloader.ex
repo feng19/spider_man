@@ -16,7 +16,7 @@ defmodule SpiderMan.Component.Downloader do
   use SpiderMan.Component
   require Logger
   alias Broadway.Message
-  alias SpiderMan.{Response, Pipeline, Component}
+  alias SpiderMan.{Component, Pipeline, Response}
 
   @event_name [:spider_man, :downloader, :stop]
 

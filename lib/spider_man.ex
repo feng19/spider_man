@@ -27,7 +27,7 @@ defmodule SpiderMan do
       3. `Spider.prepare_for_stop_component(:item_processor, state)`
       4. `Spider.prepare_for_stop(state)`
   """
-  alias SpiderMan.{Engine, Configuration, Request, Response, Item}
+  alias SpiderMan.{Configuration, Engine, Item, Request, Response}
 
   @type spider :: module | atom
 
@@ -240,7 +240,7 @@ defmodule SpiderMan do
   end
 
   @doc false
-  def periodic_measurements() do
+  def periodic_measurements do
     Enum.each(list_spiders(), &telemetry_execute(&1))
   catch
     _, _ -> :ok

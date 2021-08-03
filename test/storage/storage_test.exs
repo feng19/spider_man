@@ -1,6 +1,6 @@
 defmodule SpiderMan.StorageTest do
   use ExUnit.Case, async: true
-  alias SpiderMan.{Storage, CommonSpider, Utils}
+  alias SpiderMan.{CommonSpider, Storage, Utils}
 
   setup_all do
     [spider: StorageTest]

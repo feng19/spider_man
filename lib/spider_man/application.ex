@@ -1,7 +1,7 @@
 defmodule SpiderMan.Application do
   @moduledoc false
   use Application
-  alias SpiderMan.{Engine, Configuration}
+  alias SpiderMan.{Configuration, Engine}
 
   @app :spider_man
   @supervisor SpiderMan.Supervisor

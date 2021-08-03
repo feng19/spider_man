@@ -2,15 +2,15 @@ defmodule SpiderMan.EngineTest do
   use ExUnit.Case, async: true
 
   alias SpiderMan.{
-    Engine,
     CommonSpider,
-    Request,
-    Response,
+    Engine,
     Item,
-    Utils,
-    Requester.JustReturn,
     Pipeline,
-    Producer
+    Producer,
+    Request,
+    Requester.JustReturn,
+    Response,
+    Utils
   }
 
   setup_all do
@@ -485,5 +485,5 @@ defmodule SpiderMan.EngineTest do
     |> MapSet.subset?(all_keys)
   end
 
-  defp empty_handle_response_fun(), do: fn _response, _context -> %{} end
+  defp empty_handle_response_fun, do: fn _response, _context -> %{} end
 end

@@ -7,7 +7,7 @@ defmodule SpiderMan.CommonSpider do
   """
   use SpiderMan
   require Logger
-  alias SpiderMan.{Engine, Request, Response, Item}
+  alias SpiderMan.{Engine, Item, Request, Response}
 
   @type init :: (Engine.state() -> Engine.state())
   @type handle_response ::
