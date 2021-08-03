@@ -4,6 +4,8 @@ defmodule SpiderMan.Requester.DynamicFinch do
   alias SpiderMan.Requester.Finch, as: RequesterFinch
   @behaviour Requester
 
+  @default_options RequesterFinch.default_options()
+
   def child_spec(init_arg) do
     %{
       id: __MODULE__,
@@ -100,6 +102,31 @@ defmodule SpiderMan.Requester.DynamicFinch do
     }
 
     :ets.insert(tid, {{spider, __MODULE__}, map})
+  end
+
+  def switch_finch(spider, conn_opts: conn_opts) do
+    switch_finch(spider, pool_opts: [conn_opts: conn_opts])
+  end
+
+  def switch_finch(spider, pool_opts: opts) do
+    spec_options =
+      Keyword.get(@default_options, :spec_options)
+      |> Keyword.update!(
+        :pools,
+        &Map.update!(
+          &1,
+          :default,
+          fn default_opts -> Keyword.merge(default_opts, opts) end
+        )
+      )
+
+    switch_finch(spider, spec_options)
+  end
+
+  def switch_finch(spider, spec_options) do
+    adapter_options = Keyword.get(@default_options, :adapter_options)
+    request_options = Keyword.get(@default_options, :request_options)
+    switch_finch(spider, spec_options, adapter_options, request_options)
   end
 
   def switch_finch(spider, spec_options, adapter_options, request_options) do
