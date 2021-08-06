@@ -1,16 +1,18 @@
 # SpiderMan
 
-[![Hex.pm](https://img.shields.io/hexpm/v/spider_man.svg?maxAge=2592000)](https://hex.pm/packages/spider_man)
-[![Hex Docs](https://img.shields.io/badge/hex-docs-9768d1.svg)](https://hexdocs.pm/spider_man)
-[![Hex.pm](https://img.shields.io/hexpm/dt/spider_man.svg?maxAge=2592000)](https://hex.pm/packages/spider_man)
+[![Module Version](https://img.shields.io/hexpm/v/spider_man.svg)](https://hex.pm/packages/spider_man)
+[![Hex Docs](https://img.shields.io/badge/hex-docs-lightgreen.svg)](https://hexdocs.pm/spider_man/)
+[![Total Download](https://img.shields.io/hexpm/dt/spider_man.svg)](https://hex.pm/packages/spider_man)
+[![License](https://img.shields.io/hexpm/l/spider_man.svg)](https://github.com/feng19/spider_man/blob/master/LICENSE)
+[![Last Updated](https://img.shields.io/github/last-commit/feng19/spider_man.svg)](https://github.com/feng19/spider_man/commits/master)
 
 **SpiderMan,a fast high-level web crawling & scraping framework for Elixir.**
 
-inspired by [Crawly](https://github.com/elixir-crawly/crawly)(Elixir) and [Scrapy](https://github.com/scrapy/scrapy)(Python).
+Inspired by [Crawly](https://github.com/elixir-crawly/crawly)(Elixir) and [Scrapy](https://github.com/scrapy/scrapy)(Python).
 
 ## Usage
 
-This example show how to crawly data from 
+This example show how to crawly data from
 [elixir-jobs](https://elixirjobs.net/) website by use SpiderMan.
 
 ### Use in livebook
@@ -162,6 +164,16 @@ copy this script and save to `elixir_jobs.exs` and then start by command:
 elixir elixir_jobs.exs
 ```
 
-## License
+## Copyright and License
 
-`spider_man` source code is released under Apache 2 License. Check the [LICENSE](./LICENSE) file for more information.
+Copyright (c) 2021 feng19
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at [http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0)
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
