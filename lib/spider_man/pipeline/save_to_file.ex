@@ -40,7 +40,7 @@ defmodule SpiderMan.Pipeline.SaveToFile do
         if flag == :save2file_and_skip do
           :skiped
         else
-          %{data | flag: {flag, path}}
+          %{data | env: %{env | url: path}}
         end
 
       _ ->
