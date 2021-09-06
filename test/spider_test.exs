@@ -46,13 +46,8 @@ defmodule SpiderMan.SpiderTest do
         ]
       )
 
-    assert %{
-             status: ^status,
-             downloader_pid: downloader_pid,
-             spider_pid: spider_pid,
-             item_processor_pid: item_processor_pid,
-             common_pipeline_tid: common_pipeline_tid
-           } = SpiderMan.get_state(spider)
+    assert %{status: ^status, common_pipeline_tid: common_pipeline_tid} =
+             SpiderMan.get_state(spider)
 
     # whole flow: downloader -> requester -> spider -> item_processor -> storage
 
@@ -63,20 +58,20 @@ defmodule SpiderMan.SpiderTest do
 
     # continue downloader
     assert :ok = Engine.continue_component(spider, :downloader)
-    assert :running = Producer.producer_status(downloader_pid)
+    assert :running = Producer.producer_status(spider, :downloader)
     Process.sleep(100)
     assert 1 = Pipeline.Counter.get(common_pipeline_tid)
 
     # continue spider
     assert :ok = Engine.continue_component(spider, :spider)
-    assert :running = Producer.producer_status(spider_pid)
+    assert :running = Producer.producer_status(spider, :spider)
     Process.sleep(100)
     assert 2 = Pipeline.Counter.get(common_pipeline_tid)
 
     # continue item_processor and capture storage log
     assert capture_log([level: :info], fn ->
              assert :ok = Engine.continue_component(spider, :item_processor)
-             assert :running = Producer.producer_status(item_processor_pid)
+             assert :running = Producer.producer_status(spider, :item_processor)
              Process.sleep(100)
              assert 3 = Pipeline.Counter.get(common_pipeline_tid)
            end) =~ ">> store item:"

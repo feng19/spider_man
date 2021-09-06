@@ -23,8 +23,13 @@ defmodule SpiderMan.Application do
         {Engine, Configuration.validate_settings!(spider, settings)}
       end)
 
-    opts = [strategy: :one_for_one, name: @supervisor]
-    Supervisor.start_link(children, opts)
+    Supervisor.start_link(
+      [
+        {Registry, keys: :unique, name: SpiderMan.Registry} | children
+      ],
+      strategy: :one_for_one,
+      name: @supervisor
+    )
   end
 
   def start_child(spider, spider_settings \\ []) do

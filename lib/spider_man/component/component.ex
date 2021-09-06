@@ -1,21 +1,26 @@
 defmodule SpiderMan.Component do
   @moduledoc false
 
-  defmacro __using__(_opts \\ []) do
+  defmacro __using__(opts \\ []) do
     quote location: :keep do
       use Broadway
       require Logger
 
       def start_link(options) do
         processor = Keyword.get(options, :processor, [])
+        component = unquote(Keyword.fetch!(opts, :name))
 
         Broadway.start_link(__MODULE__,
-          name: SpiderMan.Producer.process_name(options[:spider], __MODULE__),
+          name: SpiderMan.Producer.process_name(options[:spider], component),
           producer: options[:producer],
           processors: [default: processor],
           batchers: Keyword.get(options, :batchers, []),
           context: options[:context]
         )
+      end
+
+      def process_name({:via, Registry, {SpiderMan.Registry, {spider, component}}}, base_name) do
+        {:via, Registry, {SpiderMan.Registry, {spider, component, base_name}}}
       end
 
       @impl true

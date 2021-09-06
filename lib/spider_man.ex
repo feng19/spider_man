@@ -175,6 +175,9 @@ defmodule SpiderMan do
     end)
   end
 
+  @spec components :: [component]
+  def components, do: [:downloader, :spider, :item_processor]
+
   @doc "fetch component's statistics"
   @spec stats(spider, component) :: ets_stats
   def stats(spider, component) do

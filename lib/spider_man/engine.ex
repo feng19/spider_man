@@ -122,12 +122,17 @@ defmodule SpiderMan.Engine do
     Logger.info("#{log_prefix} setup prepare_for_start finish.")
 
     state =
-      if function_exported?(spider_module, :init, 1) do
-        state = spider_module.init(state)
+      with true <- function_exported?(spider_module, :init, 1),
+           state when is_map(state) <- spider_module.init(state) do
         Logger.info("#{log_prefix} setup init finish.")
         state
       else
-        state
+        false ->
+          state
+
+        bad_state ->
+          Logger.warn("#{log_prefix} setup init return bad state: #{inspect(bad_state)}.")
+          state
       end
 
     Logger.info("#{log_prefix} setup done, status: #{state.status}.")
@@ -143,7 +148,7 @@ defmodule SpiderMan.Engine do
         %{status: :running, log_prefix: log_prefix, stats_task_pid: stats_task_pid} = state
       ) do
     Stats.Task.suspend(stats_task_pid)
-    [:ok, :ok, :ok] = call_producers(state, :suspend)
+    true = call_components(state, :suspend) |> Enum.all?(&match?(:ok, &1))
     Logger.info("#{log_prefix} status turn to suspend.")
     {:reply, :ok, %{state | status: :suspended}}
   end
@@ -152,9 +157,11 @@ defmodule SpiderMan.Engine do
 
   def handle_call({:suspend_component, component}, _from, state) do
     result =
-      component
-      |> get_component_pid(state)
-      |> Producer.call_producer(:suspend)
+      if get_component_pid(component, state) do
+        Producer.call_producer(state.spider, component, :suspend)
+      else
+        :component_not_start
+      end
 
     {:reply, result, state}
   end
@@ -165,7 +172,7 @@ defmodule SpiderMan.Engine do
         %{status: :suspended, log_prefix: log_prefix, stats_task_pid: stats_task_pid} = state
       ) do
     Stats.Task.continue(stats_task_pid)
-    [:ok, :ok, :ok] = call_producers(state, :continue)
+    true = call_components(state, :continue) |> Enum.all?(&match?(:ok, &1))
     Logger.info("#{log_prefix} status turn to running.")
     {:reply, :ok, %{state | status: :running}}
   end
@@ -174,9 +181,11 @@ defmodule SpiderMan.Engine do
 
   def handle_call({:continue_component, component}, _from, state) do
     result =
-      component
-      |> get_component_pid(state)
-      |> Producer.call_producer(:continue)
+      if get_component_pid(component, state) do
+        Producer.call_producer(state.spider, component, :continue)
+      else
+        :component_not_start
+      end
 
     {:reply, result, state}
   end
@@ -369,11 +378,16 @@ defmodule SpiderMan.Engine do
     Logger.info("#{log_prefix} #{component} component prepare_for_stop finish.")
   end
 
-  defp call_producers(state, msg) do
-    Enum.map(
-      [state.downloader_pid, state.spider_pid, state.item_processor_pid],
-      &Producer.call_producer(&1, msg)
-    )
+  defp call_components(state, msg) do
+    [
+      downloader: state.downloader_pid,
+      spider: state.spider_pid,
+      item_processor: state.item_processor_pid
+    ]
+    |> Enum.reject(&(&1 |> elem(1) |> is_nil()))
+    |> Enum.map(fn {component, _pid} ->
+      Producer.call_producer(state.spider, component, msg)
+    end)
   end
 
   defp setup_ets_tables(%{spider: spider, log_prefix: log_prefix} = state) do

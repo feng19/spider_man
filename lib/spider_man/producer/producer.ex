@@ -5,14 +5,13 @@ defmodule SpiderMan.Producer do
   @callback producer_settings(arg :: term, options) :: {producer, options} when options: keyword
   @optional_callbacks producer_settings: 2
 
-  def process_name(spider, component), do: :"#{spider}.#{Module.split(component) |> List.last()}"
+  def process_name(spider, component),
+    do: {:via, Registry, {SpiderMan.Registry, {spider, component}}}
 
-  def producer_status(broadway), do: call_producer(broadway, :status)
+  def producer_status(spider, component), do: call_producer(spider, component, :status)
 
-  def call_producer(nil, _msg), do: :ok
-
-  def call_producer(broadway, msg) do
-    [producer_name] = Broadway.producer_names(broadway)
+  def call_producer(spider, component, msg) do
+    [producer_name] = process_name(spider, component) |> Broadway.producer_names()
     GenStage.call(producer_name, msg)
   end
 

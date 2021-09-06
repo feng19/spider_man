@@ -23,9 +23,9 @@ if Code.ensure_loaded?(Telemetry.Metrics) do
         summary("broadway.processor.message.stop.duration", [
           {:unit, {:native, :millisecond}} | metric_options
         ]),
-        counter("broadway.consumer.start.time", metric_options),
-        counter("broadway.consumer.stop.time", metric_options),
-        summary("broadway.consumer.stop.duration", [
+        counter("broadway.batch_processor.start.time", metric_options),
+        counter("broadway.batch_processor.stop.time", metric_options),
+        summary("broadway.batch_processor.stop.duration", [
           {:unit, {:native, :millisecond}} | metric_options
         ])
       ]

@@ -17,7 +17,7 @@ defmodule SpiderMan.Component.ItemProcessor do
       2. if success, done.
       3. if failed, maybe try again.
   """
-  use SpiderMan.Component
+  use SpiderMan.Component, name: :item_processor
   require Logger
   alias Broadway.Message
   alias SpiderMan.Pipeline

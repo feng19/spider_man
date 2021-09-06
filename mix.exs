@@ -7,7 +7,7 @@ defmodule SpiderMan.MixProject do
   def project do
     [
       app: :spider_man,
-      version: "0.3.6",
+      version: "0.4.0",
       elixir: "~> 1.11",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
@@ -32,14 +32,14 @@ defmodule SpiderMan.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:broadway, "~> 0.6"},
+      {:broadway, "~> 1.0"},
       {:tesla, "~> 1.4"},
       {:finch, "~> 0.6"},
       {:nimble_options, "~> 0.3"},
       {:jason, "~> 1.2", optional: true},
       {:nimble_csv, "~> 1.1", optional: true},
       {:hackney, "~> 1.7", optional: true},
-      {:telemetry_metrics, "~> 0.6", optional: true},
+      {:telemetry_metrics, ">= 0.0.0", optional: true},
       {:logger_file_backend, "~> 0.0.11", optional: true},
       {:ex_doc, ">= 0.0.0", only: [:docs, :dev], runtime: false},
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false}

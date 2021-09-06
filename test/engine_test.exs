@@ -216,47 +216,29 @@ defmodule SpiderMan.EngineTest do
   end
 
   test "suspend/continue_component", %{spider: spider} do
-    %{
-      downloader_pid: downloader_pid,
-      spider_pid: spider_pid,
-      item_processor_pid: item_processor_pid
-    } = SpiderMan.get_state(spider)
-
-    Enum.each(
-      [downloader: downloader_pid, spider: spider_pid, item_processor: item_processor_pid],
-      fn {component, pid} ->
-        assert :ok = Engine.suspend_component(spider, component)
-        assert :suspended = Producer.producer_status(pid)
-        assert :ok = Engine.continue_component(spider, component)
-        assert :running = Producer.producer_status(pid)
-      end
-    )
+    SpiderMan.components()
+    |> Enum.each(fn component ->
+      assert :ok = Engine.suspend_component(spider, component)
+      assert :suspended = Producer.producer_status(spider, component)
+      assert :ok = Engine.continue_component(spider, component)
+      assert :running = Producer.producer_status(spider, component)
+    end)
   end
 
   test "continue_status", %{spider: spider} do
     :ok = SpiderMan.stop(spider)
     status = :suspended
     assert {:ok, _} = SpiderMan.start(spider, status: status)
+    assert %{status: ^status} = SpiderMan.get_state(spider)
 
-    assert %{
-             status: ^status,
-             downloader_pid: downloader_pid,
-             spider_pid: spider_pid,
-             item_processor_pid: item_processor_pid
-           } = SpiderMan.get_state(spider)
-
-    Enum.each(
-      [downloader_pid, spider_pid, item_processor_pid],
-      &assert(:suspended = Producer.producer_status(&1))
-    )
+    SpiderMan.components()
+    |> Enum.each(&assert :suspended = Producer.producer_status(spider, &1))
 
     :ok = SpiderMan.continue(spider)
     assert :running = SpiderMan.status(spider)
 
-    Enum.each(
-      [downloader_pid, spider_pid, item_processor_pid],
-      fn pid -> assert :running = Producer.producer_status(pid) end
-    )
+    SpiderMan.components()
+    |> Enum.each(&assert :running = Producer.producer_status(spider, &1))
   end
 
   test "retry_failed" do
