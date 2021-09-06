@@ -58,6 +58,7 @@ defmodule SpiderMan.SpiderManTest do
   test "list_spiders", %{spider: spider} do
     spiders = SpiderMan.list_spiders()
     assert is_list(spiders)
+    assert Enum.all?(spiders, &is_atom/1)
     assert spider in spiders
   end
 

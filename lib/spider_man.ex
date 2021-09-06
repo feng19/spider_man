@@ -239,6 +239,7 @@ defmodule SpiderMan do
   def list_spiders do
     SpiderMan.Supervisor
     |> Supervisor.which_children()
+    |> Stream.reject(&match?({SpiderMan.Registry, _, _, _}, &1))
     |> Enum.map(&elem(&1, 0))
   end
 
