@@ -7,7 +7,7 @@ defmodule SpiderMan.MixProject do
   def project do
     [
       app: :spider_man,
-      version: "0.4.1",
+      version: "0.4.2",
       elixir: "~> 1.11",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,

@@ -4,12 +4,12 @@ if Code.ensure_loaded?(Telemetry.Metrics) do
     import Telemetry.Metrics
 
     def tag_values_fun(count) do
-      &Map.update!(&1, :name, fn name ->
-        name |> Module.split() |> Enum.slice(0..count) |> Enum.join(".")
+      &Map.update!(&1, :name, fn {:via, _, {_, tuple}} ->
+        tuple |> Tuple.to_list() |> Enum.slice(0..count) |> Enum.join("-")
       end)
     end
 
-    def metrics(tag_values \\ tag_values_fun(2)) do
+    def metrics(tag_values \\ tag_values_fun(1)) do
       reporter_options = [nav: "spider_man"]
       metric_options = [tags: [:name], tag_values: tag_values, reporter_options: reporter_options]
 
