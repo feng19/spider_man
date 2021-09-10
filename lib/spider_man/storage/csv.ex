@@ -15,6 +15,7 @@ defmodule SpiderMan.Storage.CSV do
   """
   @behaviour SpiderMan.Storage
   alias SpiderMan.Utils
+  @compile {:no_warn_undefined, NimbleCSV.RFC4180}
 
   @impl true
   def store(_, items, %{io_device: io_device, header_keys: header_keys}) do
