@@ -7,7 +7,7 @@ defmodule SpiderMan.MixProject do
   def project do
     [
       app: :spider_man,
-      version: "0.4.3",
+      version: "0.4.4",
       elixir: "~> 1.11",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
@@ -50,7 +50,8 @@ defmodule SpiderMan.MixProject do
     [
       extras: [
         "LICENSE.md": [title: "License"],
-        "README.md": [title: "Overview"]
+        "README.md": [title: "Overview"],
+        "notebooks/elixirjobs.livemd": [title: "Livebook Case"]
       ],
       main: "readme",
       source_url: @source_url,
