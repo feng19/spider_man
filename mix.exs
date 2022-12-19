@@ -2,12 +2,13 @@ defmodule SpiderMan.MixProject do
   use Mix.Project
   alias SpiderMan.{Component, Requester, Pipeline, Storage}
 
+  @version "0.4.5"
   @source_url "https://github.com/feng19/spider_man"
 
   def project do
     [
       app: :spider_man,
-      version: "0.4.4",
+      version: @version,
       elixir: "~> 1.11",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
