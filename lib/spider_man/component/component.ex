@@ -19,6 +19,7 @@ defmodule SpiderMan.Component do
         )
       end
 
+      @impl true
       def process_name({:via, Registry, {SpiderMan.Registry, {spider, component}}}, base_name) do
         {:via, Registry, {SpiderMan.Registry, {spider, component, base_name}}}
       end
