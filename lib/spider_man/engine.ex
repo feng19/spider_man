@@ -565,7 +565,15 @@ defmodule SpiderMan.Engine do
 
   defp setup_file_logger(_spider, false), do: :skiped
 
-  defp setup_file_logger(spider, log2file) when log2file in [nil, true] do
+  defp setup_file_logger(spider, nil) do
+    if Code.ensure_loaded?(LoggerFileBackend) do
+      setup_file_logger(spider, true)
+    else
+      :skiped
+    end
+  end
+
+  defp setup_file_logger(spider, true) do
     timestamp = System.system_time(:second)
     log_file_path = Path.join([System.tmp_dir(), inspect(spider), "#{timestamp}.log"])
     setup_file_logger(spider, log_file_path)
