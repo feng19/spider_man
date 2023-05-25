@@ -23,9 +23,9 @@ Import notebook from URL: [`elixirjobs.livemd`](./notebooks/elixirjobs.livemd)
 
 ```elixir
 Mix.install([
-  {:spider_man, "~> 0.4"},
-  {:floki, "~> 0.31"},
-  {:nimble_csv, "~> 1.1"}
+  {:spider_man, "~> 0.5"},
+  {:floki, "~> 0.34"},
+  {:nimble_csv, "~> 1.2"}
 ])
 
 defmodule SpiderList.ElixirJobs do
