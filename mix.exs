@@ -2,7 +2,7 @@ defmodule SpiderMan.MixProject do
   use Mix.Project
   alias SpiderMan.{Component, Requester, Pipeline, Storage}
 
-  @version "0.4.7"
+  @version "0.4.8"
   @source_url "https://github.com/feng19/spider_man"
 
   def project do

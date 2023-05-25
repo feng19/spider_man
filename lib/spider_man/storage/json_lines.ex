@@ -14,6 +14,7 @@ defmodule SpiderMan.Storage.JsonLines do
   If didn't set `file_name` for this Storage, the default is `./data/Spider_Second.jsonl`.
   """
   @behaviour SpiderMan.Storage
+  @compile {:no_warn_undefined, Jason}
   alias SpiderMan.Utils
 
   @impl true

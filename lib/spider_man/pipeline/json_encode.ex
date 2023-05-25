@@ -12,6 +12,7 @@ defmodule SpiderMan.Pipeline.JsonEncode do
       ]
   """
   @behaviour SpiderMan.Pipeline
+  @compile {:no_warn_undefined, Jason}
 
   @impl true
   def call(%{value: value}, encode_opts) do

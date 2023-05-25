@@ -16,6 +16,7 @@ defmodule SpiderMan.Pipeline.JsonEncode2File do
   If didn't set dir for this pipeline, the default is current dir.
   """
   @behaviour SpiderMan.Pipeline
+  @compile {:no_warn_undefined, Jason}
 
   @impl true
   def call(%{key: key, value: value}, dir) do
