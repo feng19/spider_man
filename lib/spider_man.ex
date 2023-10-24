@@ -147,6 +147,7 @@ defmodule SpiderMan do
   def stats(spider) do
     components =
       :persistent_term.get(spider)
+      |> Enum.sort()
       |> Enum.map(fn {key, tid} ->
         {key,
          tid

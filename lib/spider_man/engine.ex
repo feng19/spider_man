@@ -131,7 +131,7 @@ defmodule SpiderMan.Engine do
           state
 
         bad_state ->
-          Logger.warn("#{log_prefix} setup init return bad state: #{inspect(bad_state)}.")
+          Logger.warning("#{log_prefix} setup init return bad state: #{inspect(bad_state)}.")
           state
       end
 
@@ -244,7 +244,7 @@ defmodule SpiderMan.Engine do
   end
 
   def handle_call(msg, _from, state) do
-    Logger.warn("unsupported call msg: #{msg}.")
+    Logger.warning("unsupported call msg: #{msg}.")
     {:reply, :upsupported, state}
   end
 
