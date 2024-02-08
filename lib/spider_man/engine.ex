@@ -314,14 +314,14 @@ defmodule SpiderMan.Engine do
       state =
         spider_module.prepare_for_start(:pre, state)
         |> setup_ets_tables()
-        |> setup_print_stats()
+        |> setup_stats()
         |> setup_components()
 
       spider_module.prepare_for_start(:post, state)
     else
       state
       |> setup_ets_tables()
-      |> setup_print_stats()
+      |> setup_stats()
       |> setup_components()
     end
   end
@@ -394,6 +394,7 @@ defmodule SpiderMan.Engine do
     state = do_setup_ets_tables(state)
 
     :persistent_term.put(spider, %{
+      stats_tid: state.stats_tid,
       failed_tid: state.failed_tid,
       common_pipeline_tid: state.common_pipeline_tid,
       downloader_tid: state.downloader_tid,
@@ -602,14 +603,19 @@ defmodule SpiderMan.Engine do
     Logger.remove_backend({LoggerFileBackend, spider})
   end
 
-  defp setup_print_stats(%{print_stats: false} = state), do: Map.put(state, :stats_task_pid, nil)
-
-  defp setup_print_stats(%{stats_tid: tid, spider: spider, status: status} = state) do
+  defp setup_stats(%{stats_tid: tid, spider: spider, status: status} = state) do
     Stats.attach_spider_stats(spider, tid)
 
-    {:ok, stats_task_pid} =
-      Stats.Task.start_link(%{status: status, tid: tid, refresh_interval: 1000})
+    pid =
+      if state.print_stats do
+        {:ok, stats_task_pid} =
+          Stats.Task.start_link(%{status: status, tid: tid, refresh_interval: 1000})
 
-    Map.put(state, :stats_task_pid, stats_task_pid)
+        stats_task_pid
+      else
+        nil
+      end
+
+    Map.put(state, :stats_task_pid, pid)
   end
 end

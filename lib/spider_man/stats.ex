@@ -31,31 +31,15 @@ defmodule SpiderMan.Stats do
   end
 
   defp format_stats(tid) do
-    [downloader, item_processor, spider] = :ets.tab2list(tid) |> Enum.sort()
-
-    [downloader, spider, item_processor]
+    SpiderMan.throughput(tid)
     |> Enum.map(&format_component_stats/1)
     |> Enum.join(" ")
   end
 
-  defp format_component_stats({component, total, success, fail, duration}) do
-    tps =
-      case System.convert_time_unit(duration, :native, :millisecond) do
-        0 ->
-          0
-
-        ms ->
-          tps = Float.floor(success / (ms / 1000), 2)
-
-          if tps > 999 do
-            "999+"
-          else
-            tps
-          end
-      end
-
-    component = Atom.to_string(component) |> Macro.camelize()
-    "#{component}:[#{success}/#{total} #{tps}/s F:#{fail}]"
+  defp format_component_stats(%{tps: tps} = info) do
+    tps = if tps > 999, do: "999+", else: tps
+    component = Atom.to_string(info.component) |> Macro.camelize()
+    "#{component}:[#{info.success}/#{info.total} #{tps}/s F:#{info.fail}]"
   end
 
   def update_spider_stats([_, component, :start], measurements, metadata, {name, tid}) do

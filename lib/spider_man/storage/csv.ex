@@ -11,7 +11,8 @@ defmodule SpiderMan.Storage.CSV do
         ]
       ]
 
-  If didn't set `:file` for this Storage, the default is `./data/Spider_Second.csv`.
+  If didn't set `:file` for this Storage, the default is `./data/[Spider]_[Second].csv`,
+  for example: `./data/spider_name_1707293252.csv`.
   """
   @behaviour SpiderMan.Storage
   alias SpiderMan.Utils

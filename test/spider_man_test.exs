@@ -51,7 +51,8 @@ defmodule SpiderMan.SpiderManTest do
              downloader_tid: [memory: _, size: 0],
              failed_tid: [memory: _, size: 0],
              item_processor_tid: [memory: _, size: 0],
-             spider_tid: [memory: _, size: 0]
+             spider_tid: [memory: _, size: 0],
+             throughputs: _
            ] = SpiderMan.stats(spider)
   end
 

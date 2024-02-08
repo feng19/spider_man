@@ -11,7 +11,8 @@ defmodule SpiderMan.Storage.ETS do
         ]
       ]
 
-  If didn't set `file_name` for this Storage, the default is `./data/Spider_Second.ets`.
+  If didn't set `file_name` for this Storage, the default is `./data/[Spider]_[Second].ets`,
+  for example: `./data/spider_name_1707293252.ets`.
   """
   require Logger
   @behaviour SpiderMan.Storage
@@ -34,7 +35,7 @@ defmodule SpiderMan.Storage.ETS do
   end
 
   @impl true
-  def prepare_for_start(file_path, options) when is_binary(file_path) do
+  def prepare_for_start(%{file_path: file_path} = setting, options) when is_binary(file_path) do
     file_path |> Path.dirname() |> File.mkdir_p!()
 
     tid =
@@ -50,25 +51,37 @@ defmodule SpiderMan.Storage.ETS do
     storage_context =
       Keyword.get(options, :context, %{})
       |> Map.get(:storage_context, %{})
-      |> Map.merge(%{file_path: file_path, tid: tid})
+      |> Map.merge(setting)
+      |> Map.put(:tid, tid)
 
     {storage_context, options}
   end
 
-  def prepare_for_start(_, options) do
-    Keyword.fetch!(options, :spider)
-    |> Utils.get_file_path_by_spider("ets")
+  def prepare_for_start(file_path, options) when is_binary(file_path) do
+    prepare_for_start(%{file_path: file_path}, options)
+  end
+
+  def prepare_for_start(arg, options) do
+    Map.new(arg || [])
+    |> Map.put_new_lazy(:file_path, fn ->
+      Keyword.fetch!(options, :spider) |> Utils.get_file_path_by_spider("ets")
+    end)
     |> prepare_for_start(options)
   end
 
   @impl true
   def prepare_for_stop(options) do
-    context = options[:context]
-    %{file_path: file_path, tid: tid} = context.storage_context
+    %{storage_context: storage_context} = options[:context]
+    %{file_path: file_path, tid: tid} = storage_context
     Logger.notice("starting dump ets to file: #{file_path} ...")
     result = Utils.dump_ets2file(tid, file_path)
     Logger.notice("dump ets to file: #{file_path} finished, result: #{inspect(result)}.")
-    :ets.delete(tid)
+
+    case storage_context[:give_away] do
+      {pid, gift_msg} -> :ets.give_away(tid, pid, gift_msg)
+      _ -> :ets.delete(tid)
+    end
+
     :ok
   end
 end

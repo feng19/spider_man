@@ -1,18 +1,18 @@
 # ElixirJobs
 
-## Setup
-
 ```elixir
 Mix.install([
-  {:spider_man, "~> 0.5"},
+  {:spider_man, "~> 0.6"},
   {:floki, "~> 0.34"},
-  {:nimble_csv, "~> 1.2"}
+  {:nimble_csv, "~> 1.2"},
+  {:kino, "~> 0.12"}
 ])
 ```
 
-build settings for spider
+## Config the spider
 
 ```elixir
+spider = SpiderList.ElixirJobs
 base_url = "https://elixirjobs.net/"
 
 requester_options = [
@@ -41,11 +41,12 @@ requester_options = [
 
 settings = [
   log2file: false,
+  print_stats: false,
   downloader_options: [requester: {SpiderMan.Requester.Finch, requester_options}],
   spider_options: [pipelines: []],
   item_processor_options: [
     storage: [
-      {SpiderMan.Storage.ETS, "./data/jobs.ets"},
+      {SpiderMan.Storage.ETS, %{file_path: "./data/jobs.ets", give_away: {self(), :got_data}}},
       {SpiderMan.Storage.CSV,
        file: "./data/jobs.csv",
        headers: [
@@ -61,14 +62,12 @@ settings = [
 ]
 ```
 
-prepare callbacks for spider
+## Code for spider
 
 ```elixir
 import SpiderMan
 import SpiderMan.Utils
 require Logger
-
-spider = SpiderList.ElixirJobs
 
 init = fn state ->
   build_request(base_url)
@@ -76,6 +75,44 @@ init = fn state ->
   |> then(&SpiderMan.insert_request(spider, &1))
 
   state
+end
+
+today = Date.from_erl!(:erlang.date())
+utc_now = DateTime.utc_now()
+
+months =
+  Map.new(
+    1..12,
+    &{
+      Calendar.strftime(%{utc_now | month: &1}, "%b"),
+      if(&1 >= 10, do: &1, else: "0#{&1}")
+    }
+  )
+
+parse_date = fn
+  "Today" ->
+    today
+
+  "Yesterday" ->
+    Date.add(today, -1)
+
+  date ->
+    case String.split(date) do
+      [day, month] ->
+        month = months[month]
+        [today.year, month, day]
+
+      [day, month, year] ->
+        month = months[month]
+        [year, month, day]
+    end
+    |> case do
+      [year, month, <<_>> = day] ->
+        Date.from_iso8601!("#{year}-#{month}-0#{day}")
+
+      [year, month, day] ->
+        Date.from_iso8601!("#{year}-#{month}-#{day}")
+    end
 end
 
 handle_list_page = fn body, n ->
@@ -104,7 +141,7 @@ handle_list_page = fn body, n ->
           link: base_url <> String.slice(link, 1..-1),
           title: title,
           sub_title: sub_title,
-          date: date,
+          date: parse_date.(date),
           workplace: workplace,
           type: type
         }
@@ -138,10 +175,69 @@ end
 
 callbacks = [init: init, handle_response: handle_response]
 {:ok, settings} = SpiderMan.CommonSpider.check_callbacks_and_merge_settings(callbacks, settings)
+settings
 ```
 
-run ther spider
+## Run it!
 
 ```elixir
-SpiderMan.run_until_zero(spider, settings, 5_000)
+# clean old data
+File.ls!("data") |> Enum.each(&File.rm!("data/#{&1}"))
+
+frame = Kino.Frame.new()
+Kino.render(frame)
+button = Kino.Control.button("Run it!")
+Kino.Frame.render(frame, button)
+
+Kino.listen(button, fn _event ->
+  md = Kino.Markdown.new("**Waitting...**")
+  Kino.Frame.render(frame, md)
+  {:ok, _} = SpiderMan.start(spider, settings)
+  Process.sleep(2000)
+
+  Kino.listen(1000, 2, fn _e, acc ->
+    if SpiderMan.check_zero_task?(spider) do
+      SpiderMan.stop(spider)
+      md = Kino.Markdown.new("**Spider Stoped**")
+      Kino.Frame.append(frame, md)
+      :halt
+    else
+      infos =
+        SpiderMan.throughput(spider)
+        |> Enum.map(fn info ->
+          tps = if info.tps > 999, do: "999+", else: info.tps
+          component = Atom.to_string(info.component) |> Macro.camelize()
+
+          "- #{component}:[Success/Total: #{info.success}/#{info.total} tps: #{tps}/s Failed:#{info.fail}]"
+        end)
+        |> Enum.join("\n")
+
+      md =
+        Kino.Markdown.new("""
+        **Used: #{acc} seconds**
+        #{infos}
+        """)
+
+      Kino.Frame.render(frame, md)
+      {:cont, acc + 1}
+    end
+  end)
+end)
+
+result_frame = Kino.Frame.new()
+md = Kino.Markdown.new("**Waitting Result...**")
+Kino.Frame.render(result_frame, md)
+
+receive do
+  {:"ETS-TRANSFER", tid, _old_owner, :got_data} ->
+    table =
+      :ets.tab2list(tid)
+      |> Stream.map(&elem(&1, 1))
+      |> Enum.sort_by(& &1.date, {:desc, Date})
+      |> Kino.DataTable.new(sorting_enabled: true)
+
+    Kino.Frame.render(result_frame, table)
+end
+
+result_frame
 ```

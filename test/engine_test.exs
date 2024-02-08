@@ -448,6 +448,7 @@ defmodule SpiderMan.EngineTest do
            )
 
     assert %{
+             stats_tid: ^stats_tid,
              failed_tid: ^failed_tid,
              common_pipeline_tid: ^common_pipeline_tid,
              downloader_tid: ^downloader_tid,
