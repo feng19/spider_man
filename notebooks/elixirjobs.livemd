@@ -190,7 +190,7 @@ button = Kino.Control.button("Run it!")
 Kino.Frame.render(frame, button)
 
 Kino.listen(button, fn _event ->
-  md = Kino.Markdown.new("**Waitting...**")
+  md = Kino.Markdown.new("**Waiting...**")
   Kino.Frame.render(frame, md)
   {:ok, _} = SpiderMan.start(spider, settings)
   Process.sleep(2000)
@@ -198,7 +198,7 @@ Kino.listen(button, fn _event ->
   Kino.listen(1000, 2, fn _e, acc ->
     if SpiderMan.check_zero_task?(spider) do
       SpiderMan.stop(spider)
-      md = Kino.Markdown.new("**Spider Stoped**")
+      md = Kino.Markdown.new("**Spider Stopped**")
       Kino.Frame.append(frame, md)
       :halt
     else
@@ -225,7 +225,7 @@ Kino.listen(button, fn _event ->
 end)
 
 result_frame = Kino.Frame.new()
-md = Kino.Markdown.new("**Waitting Result...**")
+md = Kino.Markdown.new("**Waiting Result...**")
 Kino.Frame.render(result_frame, md)
 
 receive do
