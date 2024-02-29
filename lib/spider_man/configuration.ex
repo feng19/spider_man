@@ -129,7 +129,7 @@ defmodule SpiderMan.Configuration do
         keys:
           [
             storage: [
-              type: {:or, [:atom, :mod_arg]},
+              type: {:or, [:atom, :mod_arg, :boolean, {:list, {:or, [:atom, :mod_arg]}}]},
               default: Storage.JsonLines,
               doc: "Set a storage module what are store items, "
             ],
