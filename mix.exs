@@ -2,7 +2,7 @@ defmodule SpiderMan.MixProject do
   use Mix.Project
   alias SpiderMan.{Component, Requester, Pipeline, Storage}
 
-  @version "0.6.0"
+  @version "0.6.1"
   @source_url "https://github.com/feng19/spider_man"
 
   def project do
@@ -36,7 +36,7 @@ defmodule SpiderMan.MixProject do
       {:broadway, "~> 1.0"},
       {:tesla, "~> 1.4"},
       {:finch, "~> 0.6"},
-      {:nimble_options, "~> 0.3"},
+      {:nimble_options, "~> 1.0"},
       {:jason, "~> 1.2", optional: true},
       {:nimble_csv, "~> 1.1", optional: true},
       {:hackney, "~> 1.7", optional: true},
@@ -56,6 +56,7 @@ defmodule SpiderMan.MixProject do
       ],
       main: "readme",
       source_url: @source_url,
+      source_ref: "master",
       formatters: ["html"],
       formatter_opts: [gfm: true],
       nest_modules_by_prefix: [Component, Requester, Pipeline, Storage]

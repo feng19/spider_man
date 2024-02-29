@@ -99,7 +99,9 @@ defmodule SpiderMan.Configuration do
         default: :running,
         doc: "Set the startup status for the spider, "
       ],
+      spider: [type: :atom, doc: "Set the callback module for the spider, "],
       spider_module: [type: :atom, doc: "Set the callback module for the spider, "],
+      callbacks: [type: :keyword_list],
       ets_file: [
         type: :string,
         doc: "Set the filename for the spider, and load spider's state from ets files."
@@ -110,7 +112,7 @@ defmodule SpiderMan.Configuration do
           [
             requester: [
               type: {:or, [:atom, :mod_arg]},
-              default: {{SpiderMan.Requester.Finch, []}}
+              default: {SpiderMan.Requester.Finch, []}
             ]
           ] ++ component_spec(:downloader),
         doc: "see [Downloader Options](#t:settings/0-downloader-options).",
@@ -127,7 +129,7 @@ defmodule SpiderMan.Configuration do
         keys:
           [
             storage: [
-              type: :atom,
+              type: {:or, [:atom, :mod_arg]},
               default: Storage.JsonLines,
               doc: "Set a storage module what are store items, "
             ],
@@ -148,8 +150,7 @@ defmodule SpiderMan.Configuration do
           ] ++ component_spec(:item_processor),
         doc: "see [ItemProcessor Options](#t:settings/0-itemprocessor_options).",
         subsection: "### ItemProcessor options"
-      ],
-      *: [type: :any]
+      ]
     ]
   end
 
@@ -184,39 +185,39 @@ defmodule SpiderMan.Configuration do
     ]
 
     rate_limiting_spec = [
-      type: :non_empty_keyword_list,
-      keys: [
-        allowed_messages: [required: true, type: :pos_integer],
-        interval: [required: true, type: :pos_integer]
-      ],
+      type:
+        {:or,
+         [
+           {:non_empty_keyword_list,
+            allowed_messages: [required: true, type: :pos_integer],
+            interval: [required: true, type: :pos_integer]},
+           nil
+         ]},
       doc:
         "See [Producers Options - rate_limiting](https://hexdocs.pm/broadway/Broadway.html#start_link/2-producers-options), "
     ]
 
-    {processor_spec, rate_limiting_spec, pipelines_spec, extra} =
+    {processor_spec, rate_limiting_spec, pipelines_spec} =
       case component do
         :downloader ->
           {
             Keyword.put(processor_spec, :default, max_demand: 1),
             Keyword.put(rate_limiting_spec, :default, allowed_messages: 10, interval: 1000),
-            Keyword.put(pipelines_spec, :default, [Pipeline.DuplicateFilter]),
-            [post_pipelines: pipelines_spec]
+            Keyword.put(pipelines_spec, :default, [Pipeline.DuplicateFilter])
           }
 
         :spider ->
           {
             Keyword.put(processor_spec, :default, max_demand: 1),
             rate_limiting_spec,
-            pipelines_spec,
-            []
+            pipelines_spec
           }
 
         :item_processor ->
           {
             processor_spec,
             rate_limiting_spec,
-            Keyword.put(pipelines_spec, :default, [Pipeline.DuplicateFilter]),
-            []
+            Keyword.put(pipelines_spec, :default, [Pipeline.DuplicateFilter])
           }
       end
 
@@ -225,8 +226,9 @@ defmodule SpiderMan.Configuration do
       context: [type: :any, default: %{}],
       processor: processor_spec,
       rate_limiting: rate_limiting_spec,
-      pipelines: pipelines_spec
-    ] ++ extra
+      pipelines: pipelines_spec,
+      post_pipelines: pipelines_spec
+    ]
   end
 
   def validate_pipeline(v = {fun, _arg}) when is_function(fun, 2), do: {:ok, v}
@@ -242,6 +244,8 @@ defmodule SpiderMan.Configuration do
       @default_settings
       |> Utils.merge_settings(global_settings)
       |> Utils.merge_settings(local_settings)
+
+    #      |> IO.inspect()
 
     spider_module =
       Keyword.get_lazy(spider_settings, :spider_module, fn ->
@@ -259,6 +263,7 @@ defmodule SpiderMan.Configuration do
         settings
     end
     |> Utils.merge_settings(spider_settings)
+    #    |> IO.inspect()
     |> Keyword.merge(spider: spider, spider_module: spider_module)
     |> NimbleOptions.validate!(configuration_spec())
   end
