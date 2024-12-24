@@ -581,7 +581,7 @@ defmodule SpiderMan.Engine do
   end
 
   defp setup_file_logger(spider, log_file_path) do
-    unless Code.ensure_loaded?(LoggerFileBackend) do
+    if !Code.ensure_loaded?(LoggerFileBackend) do
       raise "Please add :logger_file_backend lib to your deps."
     end
 

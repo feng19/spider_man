@@ -42,13 +42,13 @@ defmodule SpiderMan.Storage.CSV do
   end
 
   def prepare_for_start(arg, options) when is_list(arg) do
-    unless Code.ensure_loaded?(NimbleCSV.RFC4180) do
+    if !Code.ensure_loaded?(NimbleCSV.RFC4180) do
       raise "Please add :nimble_csv lib to your deps."
     end
 
     %{file: file_path, headers: headers} = Map.new(arg)
 
-    unless is_binary(file_path) and is_list(headers) do
+    if !(is_binary(file_path) and is_list(headers)) do
       raise "Wrong type of file: #{inspect(file_path)} or headers: #{inspect(headers)} when using #{inspect(__MODULE__)}."
     end
 

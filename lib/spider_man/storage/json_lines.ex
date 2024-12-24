@@ -32,7 +32,7 @@ defmodule SpiderMan.Storage.JsonLines do
 
   @impl true
   def prepare_for_start(file_path, options) when is_binary(file_path) do
-    unless Code.ensure_loaded?(Jason) do
+    if !Code.ensure_loaded?(Jason) do
       raise "Please add :jason lib to your deps."
     end
 

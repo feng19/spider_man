@@ -21,7 +21,7 @@ defmodule SpiderMan.Pipeline.JsonEncode do
 
   @impl true
   def prepare_for_start(encode_opts, options) do
-    unless Code.ensure_loaded?(Jason) do
+    if !Code.ensure_loaded?(Jason) do
       raise "Please add :jason lib to your deps."
     end
 
