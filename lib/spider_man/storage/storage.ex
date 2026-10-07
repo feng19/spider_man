@@ -30,6 +30,8 @@ defmodule SpiderMan.Storage do
     end
   end
 
+  defp prepare_for_start(nil, options), do: options
+
   defp prepare_for_start(storage, options) when is_atom(storage) do
     prepare_for_start({storage, nil}, options)
   end
@@ -88,8 +90,6 @@ defmodule SpiderMan.Storage do
 
     Keyword.merge(options, storage: Multi, context: context)
   end
-
-  defp prepare_for_start(nil, options), do: options
 
   def prepare_for_stop(false), do: :ok
 

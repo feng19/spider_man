@@ -6,7 +6,6 @@ defmodule SpiderMan.CommonSpider do
       #{inspect(__MODULE__)}.start(:spider_name, handle_response: fn response, context -> %{} end)
   """
   use SpiderMan
-  require Logger
   alias SpiderMan.{Engine, Item, Request, Response}
 
   @type init :: (Engine.state() -> Engine.state())

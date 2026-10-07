@@ -14,7 +14,6 @@ defmodule SpiderMan.Component.Downloader do
       2. if failed, maybe try again.
   """
   use SpiderMan.Component, name: :downloader
-  require Logger
   alias Broadway.Message
   alias SpiderMan.{Component, Pipeline, Response}
 

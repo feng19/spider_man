@@ -14,7 +14,6 @@ defmodule SpiderMan.Component.Spider do
       2. if failed, maybe try again.
   """
   use SpiderMan.Component, name: :spider
-  require Logger
   alias Broadway.Message
   alias SpiderMan.{Component, Pipeline}
 

@@ -14,7 +14,6 @@ defmodule SpiderMan.Pipeline.SetCookie do
         ...
       ]
   """
-  require Logger
   alias SpiderMan.{Request, Response}
   @behaviour SpiderMan.Pipeline
 

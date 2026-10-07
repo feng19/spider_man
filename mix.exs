@@ -2,14 +2,14 @@ defmodule SpiderMan.MixProject do
   use Mix.Project
   alias SpiderMan.{Component, Requester, Pipeline, Storage}
 
-  @version "0.6.4"
+  @version "0.6.5"
   @source_url "https://github.com/feng19/spider_man"
 
   def project do
     [
       app: :spider_man,
       version: @version,
-      elixir: "~> 1.11",
+      elixir: "~> 1.14",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       test_coverage: [ignore_modules: cover_ignore_modules()],
@@ -39,9 +39,10 @@ defmodule SpiderMan.MixProject do
       {:nimble_options, "~> 1.0"},
       {:jason, "~> 1.2", optional: true},
       {:nimble_csv, "~> 1.1", optional: true},
-      {:hackney, "~> 1.7", optional: true},
+      {:hackney, "~> 4.0", optional: true},
       {:telemetry_metrics, ">= 0.0.0", optional: true},
-      {:logger_file_backend, "~> 0.0.11", optional: true},
+      {:logger_file_backend, "~> 0.1", optional: true},
+      {:logger_backends, "~> 1.0", optional: true},
       {:ex_doc, ">= 0.0.0", only: [:docs, :dev], runtime: false},
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false}
     ]

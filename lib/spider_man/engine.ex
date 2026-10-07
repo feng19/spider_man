@@ -567,7 +567,7 @@ defmodule SpiderMan.Engine do
   defp setup_file_logger(_spider, false), do: :skiped
 
   defp setup_file_logger(spider, nil) do
-    if Code.ensure_loaded?(LoggerFileBackend) do
+    if Code.ensure_loaded?(LoggerFileBackend) and Code.ensure_loaded?(LoggerBackends) do
       setup_file_logger(spider, true)
     else
       :skiped
@@ -581,14 +581,14 @@ defmodule SpiderMan.Engine do
   end
 
   defp setup_file_logger(spider, log_file_path) do
-    if !Code.ensure_loaded?(LoggerFileBackend) do
-      raise "Please add :logger_file_backend lib to your deps."
+    if !Code.ensure_loaded?(LoggerFileBackend) or !Code.ensure_loaded?(LoggerBackends) do
+      raise "Please add :logger_file_backend and :logger_backends libs to your deps."
     end
 
     backend = {LoggerFileBackend, spider}
-    Logger.add_backend(backend)
+    LoggerBackends.add(backend)
 
-    Logger.configure_backend(backend,
+    LoggerBackends.configure(backend,
       path: log_file_path,
       level: :debug,
       metadata_filter: [spider: spider]
@@ -600,7 +600,7 @@ defmodule SpiderMan.Engine do
   defp remove_file_logger(%{log_file_path: :skiped}), do: :skiped
 
   defp remove_file_logger(%{spider: spider}) do
-    Logger.remove_backend({LoggerFileBackend, spider})
+    LoggerBackends.remove({LoggerFileBackend, spider})
   end
 
   defp setup_stats(%{stats_tid: tid, spider: spider, status: status} = state) do
